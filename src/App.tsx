@@ -33,7 +33,16 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-full" style={{ paddingBottom: 'calc(var(--nav-height) + var(--nav-gap) * 2 + var(--safe-bottom))' }}>
+    <div
+      className="min-h-full"
+      style={
+        // Add Record sizes itself around the nav, so the shared bottom padding
+        // would push its sheet tabs underneath it.
+        route === 'add-record'
+          ? undefined
+          : { paddingBottom: 'calc(var(--nav-height) + var(--nav-gap) * 2 + var(--safe-bottom))' }
+      }
+    >
       {route !== 'add-record' && (
         <header className="flex items-center justify-end px-4 pt-5">
           <HamburgerButton onOpen={() => setMenuOpen(true)} />

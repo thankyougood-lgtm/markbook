@@ -85,6 +85,31 @@ describe('AddRecord page', () => {
     expect(consoleErrors).toEqual([]);
   });
 
+  it('keeps the page width-bound and the sheet tabs scrollable', async () => {
+    const cls = await createClass({
+      name: '11A',
+      academicYear: '2018 EC',
+      schoolName: 'S',
+      teacherName: 'T'
+    });
+    setSelectedClassId(cls.id);
+
+    const { container } = render(<AddRecord onOpenMenu={() => {}} />);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Sheet1' })).toBeTruthy());
+
+    // The sheet itself scrolls; the page must not grow past the viewport.
+    const root = container.firstElementChild as HTMLElement;
+    expect(root.className).toContain('flex-col');
+    expect(root.style.height).toContain('100vh');
+
+    const tabs = screen.getByRole('button', { name: 'Sheet1' }).parentElement as HTMLElement;
+    expect(tabs.className).toContain('overflow-x-auto');
+
+    // Every sheet tab row is horizontally scrollable rather than wrapping.
+    expect(tabs.className).not.toContain('flex-wrap');
+    expect(consoleErrors).toEqual([]);
+  });
+
   it('offers to create a class when none exists', async () => {
     render(<AddRecord onOpenMenu={() => {}} />);
     await waitFor(() => expect(screen.getByText('Create a class to start')).toBeTruthy());
