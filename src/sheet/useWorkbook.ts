@@ -8,10 +8,27 @@ import type { CellValue } from './SpreadsheetGrid';
 export type SaveState = 'saved' | 'saving' | 'unsaved' | 'error';
 
 /** The little bit of the grid the save path needs. */
+export interface GridSelection {
+  left: number;
+  top: number;
+  right: number;
+  bottom: number;
+}
+
 export interface GridApi {
   getData: () => CellValue[][];
   undo?: () => void;
   redo?: () => void;
+  getSelection?: () => GridSelection | null;
+  getValue?: (x: number, y: number) => CellValue;
+  setValue?: (x: number, y: number, value: CellValue) => void;
+  openEditorAt?: (x: number, y: number) => void;
+  getCellElement?: (x: number, y: number) => HTMLElement | null;
+  confirmEdit?: () => void;
+  cancelEdit?: () => void;
+  moveSelection?: (direction: 'up' | 'down' | 'left' | 'right') => void;
+  setKeyboardMode?: (mode: 'text' | 'number') => void;
+  hideKeyboard?: () => void;
 }
 
 const SAVE_DELAY_MS = 300;

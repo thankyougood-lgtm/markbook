@@ -8,6 +8,13 @@ speaker before release.
   search, more, newSheet, blankSheet, rosterSheet, addSheet, loadingGrid,
   gridFailed, createClassToStart, noClassTitle, classSheetTitle) — all drafts.
 
+## Spreadsheet stage 3
+- `spreadsheet.*` (editCell, formulaBar, expandFormula, copy, cut, paste,
+  formatCells, sort, insert, filter, fillColor, decreaseDecimals,
+  increaseDecimals, deleteCells, mergeCells, confirmEdit, cancelEdit,
+  previousCell, nextCell, numberKeyboard, textKeyboard, pickDate,
+  hideKeyboard, selectionHandles) — all drafts.
+
 ## Amharic (am)
 - `nav.home` መነሻ — "Home / start"
 - `nav.addRecord` መዝገብ ጨምር — "add a record"

@@ -19,6 +19,7 @@ function routeFromHash(): Route {
 export default function App() {
   const [route, setRoute] = useState<Route>(routeFromHash);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [sheetEditing, setSheetEditing] = useState(false);
 
   useEffect(() => {
     const onHash = () => setRoute(routeFromHash());
@@ -43,7 +44,7 @@ export default function App() {
         {route === 'home' && <Home />}
         {route === 'add-record' && (
           <ErrorBoundary>
-            <AddRecord onOpenMenu={() => setMenuOpen(true)} />
+            <AddRecord onOpenMenu={() => setMenuOpen(true)} onEditingChange={setSheetEditing} />
           </ErrorBoundary>
         )}
         {route === 'attendance' && <Attendance />}
@@ -52,7 +53,7 @@ export default function App() {
       </main>
 
       {menuOpen && <MenuSheet onClose={() => setMenuOpen(false)} onNavigate={navigate} />}
-      <BottomNav route={route} onNavigate={navigate} />
+      {!sheetEditing && <BottomNav route={route} onNavigate={navigate} />}
     </div>
   );
 }

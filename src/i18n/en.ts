@@ -70,7 +70,31 @@ export const en = {
     gridFailed: 'The spreadsheet could not be loaded',
     createClassToStart: 'Create a class to start',
     noClassTitle: 'No class yet',
-    classSheetTitle: 'Class and semester'
+    classSheetTitle: 'Class and semester',
+    editCell: 'Edit cell',
+    formulaBar: 'Cell content',
+    expandFormula: 'Expand cell content',
+    copy: 'Copy',
+    cut: 'Cut',
+    paste: 'Paste',
+    formatCells: 'Format cells',
+    sort: 'Sort',
+    insert: 'Insert',
+    filter: 'Filter',
+    fillColor: 'Fill color',
+    decreaseDecimals: 'Decrease decimals',
+    increaseDecimals: 'Increase decimals',
+    deleteCells: 'Delete',
+    mergeCells: 'Merge cells',
+    confirmEdit: 'Confirm',
+    cancelEdit: 'Cancel',
+    previousCell: 'Previous cell',
+    nextCell: 'Next cell',
+    numberKeyboard: 'Number keyboard',
+    textKeyboard: 'Text keyboard',
+    pickDate: 'Pick date',
+    hideKeyboard: 'Hide keyboard',
+    selectionHandles: 'Selection handles'
   }
 };
 

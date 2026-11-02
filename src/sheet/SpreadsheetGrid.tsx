@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type MutableRefObject } from 'react';
 import type jspreadsheet from 'jspreadsheet-ce';
 import { loadGrid } from './loadGrid';
-import type { GridApi } from './useWorkbook';
+import type { GridApi, GridSelection } from './useWorkbook';
 
 type WorksheetInstance = ReturnType<typeof jspreadsheet>[number];
 
@@ -14,6 +14,10 @@ export interface SpreadsheetGridProps {
   rowCount: number;
   colCount: number;
   gridRef?: MutableRefObject<GridApi | null>;
+  /** Fires with the current range and active cell whenever the selection moves. */
+  onSelectionChange?: (selection: GridSelection) => void;
+  /** Fires when a cell editor opens (true) or closes (false). */
+  onEditingChange?: (editing: boolean) => void;
   onDirty: () => void;
   loadingLabel: string;
   failedLabel: string;
@@ -27,6 +31,8 @@ export default function SpreadsheetGrid({
   rowCount,
   colCount,
   gridRef,
+  onSelectionChange,
+  onEditingChange,
   onDirty,
   loadingLabel,
   failedLabel
@@ -34,6 +40,10 @@ export default function SpreadsheetGrid({
   const hostRef = useRef<HTMLDivElement | null>(null);
   const dirtyRef = useRef(onDirty);
   dirtyRef.current = onDirty;
+  const selectionRef = useRef(onSelectionChange);
+  selectionRef.current = onSelectionChange;
+  const editingRef = useRef(onEditingChange);
+  editingRef.current = onEditingChange;
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
@@ -51,6 +61,10 @@ export default function SpreadsheetGrid({
           tabs: false,
           toolbar: false,
           onchange: () => dirtyRef.current(),
+          onselection: (_spreadsheet, left, top, right, bottom) =>
+            selectionRef.current?.({ left, top, right, bottom }),
+          oneditionstart: () => editingRef.current?.(true),
+          oneditionend: () => editingRef.current?.(false),
           worksheets: [
             {
               data: (data as jspreadsheet.CellValue[][] | null) ?? undefined,
@@ -63,10 +77,43 @@ export default function SpreadsheetGrid({
         });
         destroy = () => mod.default.destroy(host as Parameters<typeof mod.default.destroy>[0]);
         if (gridRef) {
+          const ws = () => instance?.[0] ?? null;
           gridRef.current = {
-            getData: () => instance?.[0]?.getData() ?? [],
-            undo: () => instance?.[0]?.undo(),
-            redo: () => instance?.[0]?.redo()
+            getData: () => ws()?.getData() ?? [],
+            undo: () => ws()?.undo(),
+            redo: () => ws()?.redo(),
+            getSelection: () => {
+              const s = ws()?.getSelection();
+              return s ? { left: s[0], top: s[1], right: s[2], bottom: s[3] } : null;
+            },
+            getValue: (x, y) => ws()?.getValueFromCoords(x, y) ?? null,
+            setValue: (x, y, value) => ws()?.setValueFromCoords(x, y, value as jspreadsheet.CellValue, true),
+            getCellElement: (x, y) => ws()?.getCellFromCoords(x, y) ?? null,
+            openEditorAt: (x, y) => {
+              const w = ws();
+              const cell = w?.getCellFromCoords(x, y);
+              if (w && cell) w.openEditor(cell);
+            },
+            confirmEdit: () => {
+              const w = ws();
+              if (!w) return;
+              const s = w.getSelection();
+              w.closeEditor(w.getCellFromCoords(s[0], s[1]), true);
+            },
+            cancelEdit: () => {
+              const w = ws();
+              if (!w) return;
+              const s = w.getSelection();
+              w.closeEditor(w.getCellFromCoords(s[0], s[1]), false);
+            },
+            moveSelection: (dir) => {
+              const w = ws();
+              if (!w) return;
+              if (dir === 'up') w.up();
+              else if (dir === 'down') w.down();
+              else if (dir === 'left') w.left();
+              else w.right();
+            }
           };
         }
       })

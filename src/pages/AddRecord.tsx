@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import HamburgerButton from '../components/HamburgerButton';
 import Sheet from '../components/Sheet';
 import ClassForm from '../components/ClassForm';
@@ -15,15 +15,74 @@ import {
 import { t } from '../i18n';
 import type { Semester, SheetTemplate } from '../db/schema';
 import { setSelectedClassId, setSelectedSemester } from '../state/selection';
-import SpreadsheetGrid from '../sheet/SpreadsheetGrid';
-import { useWorkbook } from '../sheet/useWorkbook';
+import SpreadsheetGrid, { type CellValue } from '../sheet/SpreadsheetGrid';
+import { useWorkbook, type GridSelection } from '../sheet/useWorkbook';
+import {
+  CellBar,
+  EditButtons,
+  KeyboardPill,
+  SelectionToolbar,
+  cellLabel
+} from '../sheet/SheetChrome';
 
 const iconButton =
   'flex h-11 w-11 items-center justify-center rounded-btn text-navy disabled:opacity-40';
 
-export default function AddRecord({ onOpenMenu }: { onOpenMenu: () => void }) {
+export default function AddRecord({
+  onOpenMenu,
+  onEditingChange
+}: {
+  onOpenMenu: () => void;
+  onEditingChange?: (editing: boolean) => void;
+}) {
   const tr = t();
   const wb = useWorkbook();
+  const [selection, setSelection] = useState<GridSelection | null>(null);
+  const [cellValue, setCellValue] = useState<CellValue>(null);
+  const [editing, setEditing] = useState(false);
+  const [numberMode, setNumberMode] = useState(false);
+  const [keyboardOffset, setKeyboardOffset] = useState(0);
+
+  // Hide the bottom nav while editing, and lift the editing chrome above the
+  // on-screen keyboard (Android shrinks the layout, iOS does not).
+  useEffect(() => {
+    onEditingChange?.(editing);
+  }, [editing, onEditingChange]);
+
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const sync = () => setKeyboardOffset(Math.max(0, window.innerHeight - vv.height - vv.offsetTop));
+    vv.addEventListener('resize', sync);
+    vv.addEventListener('scroll', sync);
+    sync();
+    return () => {
+      vv.removeEventListener('resize', sync);
+      vv.removeEventListener('scroll', sync);
+    };
+  }, []);
+
+  const handleSelection = (next: GridSelection) => {
+    setSelection(next);
+    setCellValue(wb.gridRef.current?.getValue?.(next.left, next.top) ?? null);
+  };
+
+  const handleEditing = (next: boolean) => {
+    setEditing(next);
+    const s = wb.gridRef.current?.getSelection?.();
+    if (next && s) setCellValue(wb.gridRef.current?.getValue?.(s.left, s.top) ?? null);
+  };
+
+  const confirmEdit = () => {
+    wb.gridRef.current?.confirmEdit?.();
+    wb.gridRef.current?.moveSelection?.('down');
+    setEditing(false);
+  };
+
+  const cancelEdit = () => {
+    wb.gridRef.current?.cancelEdit?.();
+    setEditing(false);
+  };
   const [classSheetOpen, setClassSheetOpen] = useState(false);
   const [newSheetOpen, setNewSheetOpen] = useState(false);
   const [creatingClass, setCreatingClass] = useState(false);
@@ -90,7 +149,11 @@ export default function AddRecord({ onOpenMenu }: { onOpenMenu: () => void }) {
         <HamburgerButton onOpen={onOpenMenu} />
       </div>
 
-      <div className="mt-1 flex items-center justify-around px-2" role="toolbar" aria-label={tr.spreadsheet.more}>
+      <div
+        className={`mt-1 flex items-center justify-around px-2 ${editing ? 'hidden' : ''}`}
+        role="toolbar"
+        aria-label={tr.spreadsheet.more}
+      >
         <button type="button" aria-label={tr.spreadsheet.undo} className={iconButton} onClick={() => wb.gridRef.current?.undo?.()}>
           <UndoIcon width={22} height={22} />
         </button>
@@ -128,11 +191,58 @@ export default function AddRecord({ onOpenMenu }: { onOpenMenu: () => void }) {
             colCount={wb.dimensions.colCount}
             gridRef={wb.gridRef}
             onDirty={wb.markDirty}
+            onSelectionChange={handleSelection}
+            onEditingChange={handleEditing}
             loadingLabel={tr.spreadsheet.loadingGrid}
             failedLabel={tr.spreadsheet.gridFailed}
           />
         ) : null}
       </div>
+
+      {wb.classRow && wb.activeSheet && (
+        <div className="flex items-center gap-2">
+          <div className="min-w-0 flex-1">
+            <CellBar
+              tr={tr}
+              value={cellValue}
+              editing={editing}
+              onStartEdit={() => {
+                const s = wb.gridRef.current?.getSelection?.();
+                if (s) wb.gridRef.current?.openEditorAt?.(s.left, s.top);
+              }}
+              onChange={(next) => {
+                setCellValue(next);
+                const s = selection ?? wb.gridRef.current?.getSelection?.();
+                if (s) wb.gridRef.current?.setValue?.(s.left, s.top, next);
+              }}
+            />
+          </div>
+          {editing && <EditButtons tr={tr} onConfirm={confirmEdit} onCancel={cancelEdit} />}
+        </div>
+      )}
+
+      {wb.classRow && wb.activeSheet && !editing && (
+        <div className="px-2 pb-1">
+          <SelectionToolbar tr={tr} gridRef={wb.gridRef} />
+        </div>
+      )}
+
+      {wb.classRow && wb.activeSheet && editing && (
+        <div className="px-2" style={{ marginBottom: keyboardOffset }}>
+          <KeyboardPill
+            tr={tr}
+            gridRef={wb.gridRef}
+            numberMode={numberMode}
+            onToggleKeyboard={() => setNumberMode((n) => !n)}
+          />
+        </div>
+      )}
+
+      {selection && (
+        <span className="sr-only" role="status">
+          {cellLabel(selection)}
+        </span>
+      )}
 
       <div className="flex items-center gap-1 overflow-x-auto bg-header-bg px-2 py-1">
         {wb.sheets.map((s) => {
