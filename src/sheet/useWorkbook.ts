@@ -204,13 +204,28 @@ export function useWorkbook() {
     await reloadSheets();
   }, [activeSheet, reloadSheets]);
 
-  const refreshClass = useCallback(async (classId: number | null) => {
-    if (classId === null) {
-      setClassRow(null);
-      return;
-    }
-    setClassRow((await getClass(classId)) ?? null);
-  }, []);
+  // Switching class (or creating one inside Add Record) must load that class's
+  // sheets too; the mount effect only re-runs when the semester changes.
+  const refreshClass = useCallback(
+    async (classId: number | null) => {
+      if (classId === null) {
+        setClassRow(null);
+        setSheets([]);
+        setActiveSheet(null);
+        setData(null);
+        return;
+      }
+      const next = (await getClass(classId)) ?? null;
+      setClassRow(next);
+      if (!next) return;
+      setLoading(true);
+      const existing = await listSheets(next.id, semester);
+      const list = existing.length ? existing : [await createSheet({ classId: next.id, semester })];
+      setSheets(list);
+      await openSheet(list[0]!);
+    },
+    [semester, openSheet]
+  );
 
   return {
     classes,
