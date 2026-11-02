@@ -29,6 +29,16 @@ export interface GridApi {
   moveSelection?: (direction: 'up' | 'down' | 'left' | 'right') => void;
   setKeyboardMode?: (mode: 'text' | 'number') => void;
   hideKeyboard?: () => void;
+  insertRow?: (before: boolean) => void;
+  insertColumn?: (before: boolean) => void;
+  deleteRow?: () => void;
+  deleteColumn?: () => void;
+  clearContents?: () => void;
+  copy?: (cut?: boolean) => void;
+  pasteText?: (text: string) => void;
+  pasteFromClipboard?: () => Promise<void>;
+  applyStyle?: (style: Record<string, string>) => void;
+  mergeSelection?: () => void;
 }
 
 const SAVE_DELAY_MS = 300;
