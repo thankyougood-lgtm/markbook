@@ -306,26 +306,6 @@ export function FormatPanel({
         ))}
       </div>
 
-      <label className="block text-sm text-navy">
-        {tr.spreadsheet.numberFormat}
-        <select
-          className="mt-1 w-full rounded-btn border border-line bg-surface px-3 py-2 text-sm text-navy"
-          defaultValue="general"
-          onChange={(e) => {
-            const v = e.target.value;
-            if (v === 'general') apply({});
-            else if (v === 'number') gridRef.current?.setNumberFormat?.(0);
-            else gridRef.current?.setNumberFormat?.(Number(v));
-          }}
-        >
-          <option value="general">{tr.spreadsheet.formatGeneral}</option>
-          <option value="number">{tr.spreadsheet.formatNumber}</option>
-          <option value="0">{tr.spreadsheet.formatZeroDecimals}</option>
-          <option value="1">{tr.spreadsheet.formatOneDecimal}</option>
-          <option value="2">{tr.spreadsheet.formatTwoDecimals}</option>
-        </select>
-      </label>
-
       <button
         type="button"
         onClick={onClose}
