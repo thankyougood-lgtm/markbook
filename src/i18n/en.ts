@@ -112,7 +112,25 @@ export const en = {
     formatNumber: 'Number',
     formatZeroDecimals: '0 decimals',
     formatOneDecimal: '1 decimal',
-    formatTwoDecimals: '2 decimals'
+    formatTwoDecimals: '2 decimals',
+    sheetMenu: 'Sheet options',
+    renameSheet: 'Rename',
+    duplicateSheet: 'Duplicate',
+    deleteSheet: 'Delete',
+    deleteSheetConfirm: 'Delete this sheet? It is archived and can be recovered.',
+    useAsStudentList: 'Use as student list',
+    studentListBadge: 'Student list',
+    renameSheetTitle: 'Rename sheet',
+    sheetName: 'Sheet name',
+    searchInSheet: 'Search in sheet',
+    searchPlaceholder: 'Find text',
+    searchNext: 'Next match',
+    searchNoMatches: 'No matches',
+    moreOptions: 'More options',
+    freezeHeaderRow: 'Freeze header row',
+    columnWidth: 'Column width',
+    rowHeight: 'Row height',
+    apply: 'Apply'
   }
 };
 

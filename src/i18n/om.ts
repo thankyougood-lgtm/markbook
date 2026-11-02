@@ -115,6 +115,24 @@ export const om: Dict = {
     formatNumber: 'Lakkoofsa',
     formatZeroDecimals: '0 asraa',
     formatOneDecimal: '1 asraa',
-    formatTwoDecimals: '2 asraa'
+    formatTwoDecimals: '2 asraa',
+    sheetMenu: 'Filannoo waraqaa',
+    renameSheet: 'Maqaa jijjiiri',
+    duplicateSheet: 'Dachaa godhi',
+    deleteSheet: 'Haqi',
+    deleteSheetConfirm: 'Waraqaan kun haqamaa? Kuufamee deebi\'uu ni danda\'a.',
+    useAsStudentList: 'Tarree barattootaa godhi',
+    studentListBadge: 'Tarree barattootaa',
+    renameSheetTitle: 'Maqaa waraqaa jijjiiri',
+    sheetName: 'Maqaa waraqaa',
+    searchInSheet: 'Waraqaa keessatti barbaadi',
+    searchPlaceholder: 'Barruu barbaadi',
+    searchNext: 'Kan itti aanu',
+    searchNoMatches: 'Wanti argame hin jiru',
+    moreOptions: 'Filannoo dabalataa',
+    freezeHeaderRow: 'Tarree mata-duree qabsiisi',
+    columnWidth: 'Ballina utubaa',
+    rowHeight: 'Dherina tarree',
+    apply: 'Hojiirra oolchi'
   }
 };

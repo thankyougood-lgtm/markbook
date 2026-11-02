@@ -37,6 +37,9 @@ export async function createSheet(input: NewSheetInput): Promise<SheetRow> {
   const order = existing.length ? Math.max(...existing.map((s) => s.order)) + 1 : 0;
   const template = input.template ?? 'blank';
   const name = input.name ?? `Sheet${existing.length + 1}`;
+  // The first Class roster sheet of a class + semester is the student list.
+  const isStudentList =
+    template === 'roster' && !existing.some((s) => s.isStudentList);
   const id = await db.sheets.add({
     classId: input.classId,
     semester: input.semester,
@@ -44,7 +47,8 @@ export async function createSheet(input: NewSheetInput): Promise<SheetRow> {
     order,
     template,
     createdAt: Date.now(),
-    archivedAt: null
+    archivedAt: null,
+    isStudentList
   } as SheetRow);
   await db.sheetData.put({
     sheetId: id,
@@ -82,6 +86,16 @@ export async function duplicateSheet(id: number): Promise<SheetRow> {
 // Sheets are archived, never erased, so a mistaken delete stays recoverable.
 export async function archiveSheet(id: number): Promise<void> {
   await db.sheets.update(id, { archivedAt: Date.now() });
+}
+
+// Exactly one sheet per class + semester is the student list.
+export async function setStudentList(id: number): Promise<void> {
+  const sheet = await db.sheets.get(id);
+  if (!sheet) return;
+  const siblings = await listSheets(sheet.classId, sheet.semester);
+  for (const sibling of siblings) {
+    await db.sheets.update(sibling.id, { isStudentList: sibling.id === id });
+  }
 }
 
 export async function loadSheetData(sheetId: number): Promise<SheetDataRow | undefined> {

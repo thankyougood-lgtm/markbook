@@ -1,7 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ClassRow, Semester, SheetRow, SheetTemplate } from '../db/schema';
 import { getClass, listClasses } from '../db/repositories/classes';
-import { createSheet, listSheets, loadSheetData, saveSheetData } from '../db/repositories/sheets';
+import {
+  archiveSheet,
+  createSheet,
+  duplicateSheet,
+  listSheets,
+  loadSheetData,
+  renameSheet,
+  saveSheetData,
+  setStudentList
+} from '../db/repositories/sheets';
 import { getSelectedClassId, getSelectedSemester } from '../state/selection';
 import type { CellValue } from './SpreadsheetGrid';
 
@@ -151,6 +160,45 @@ export function useWorkbook() {
     [classRow, semester, openSheet]
   );
 
+  const reloadSheets = useCallback(async () => {
+    if (!classRow) return;
+    setSheets(await listSheets(classRow.id, semester));
+  }, [classRow, semester]);
+
+  const renameActiveSheet = useCallback(
+    async (name: string) => {
+      if (!activeSheet) return;
+      await renameSheet(activeSheet.id, name);
+      await reloadSheets();
+    },
+    [activeSheet, reloadSheets]
+  );
+
+  const duplicateActiveSheet = useCallback(async () => {
+    if (!activeSheet) return;
+    const copy = await duplicateSheet(activeSheet.id);
+    await reloadSheets();
+    await openSheet(copy);
+  }, [activeSheet, reloadSheets, openSheet]);
+
+  const archiveActiveSheet = useCallback(async () => {
+    if (!activeSheet) return;
+    await archiveSheet(activeSheet.id);
+    const remaining = (await listSheets(activeSheet.classId, activeSheet.semester)).filter(
+      (s) => s.id !== activeSheet.id
+    );
+    setSheets(remaining);
+    setActiveSheet(null);
+    setData(null);
+    if (remaining[0]) await openSheet(remaining[0]);
+  }, [activeSheet, openSheet]);
+
+  const markAsStudentList = useCallback(async () => {
+    if (!activeSheet) return;
+    await setStudentList(activeSheet.id);
+    await reloadSheets();
+  }, [activeSheet, reloadSheets]);
+
   const refreshClass = useCallback(async (classId: number | null) => {
     if (classId === null) {
       setClassRow(null);
@@ -175,6 +223,10 @@ export function useWorkbook() {
     flush,
     openSheet,
     addSheet,
+    renameActiveSheet,
+    duplicateActiveSheet,
+    archiveActiveSheet,
+    markAsStudentList,
     refreshClass
   };
 }

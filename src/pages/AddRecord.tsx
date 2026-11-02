@@ -4,6 +4,7 @@ import Sheet from '../components/Sheet';
 import ClassForm from '../components/ClassForm';
 import {
   ChevronDownIcon,
+  PeopleIcon,
   ExportIcon,
   FormatIcon,
   MoreIcon,
@@ -113,6 +114,10 @@ export default function AddRecord({
   const [newSheetOpen, setNewSheetOpen] = useState(false);
   const [creatingClass, setCreatingClass] = useState(false);
   const [panel, setPanel] = useState<'insert' | 'delete' | 'format' | null>(null);
+  const [sheetMenuOpen, setSheetMenuOpen] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [sheetNameDraft, setSheetNameDraft] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const saveLabel =
     wb.saveState === 'saving'
@@ -279,12 +284,24 @@ export default function AddRecord({
             <button
               key={s.id}
               type="button"
-              onClick={() => void wb.openSheet(s)}
+              onClick={() => {
+                if (active) {
+                  setSheetMenuOpen(true);
+                } else {
+                  void wb.openSheet(s);
+                }
+              }}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                setSheetMenuOpen(true);
+              }}
               aria-current={active ? 'true' : undefined}
-              className={`shrink-0 rounded-btn px-3 py-2 text-xs ${
+              aria-label={s.isStudentList ? `${s.name} - ${tr.spreadsheet.studentListBadge}` : s.name}
+              className={`flex shrink-0 items-center gap-1 rounded-btn px-3 py-2 text-xs ${
                 active ? 'bg-surface font-semibold text-navy shadow-soft' : 'text-muted'
               }`}
             >
+              {s.isStudentList && <PeopleIcon width={14} height={14} />}
               {s.name}
             </button>
           );
@@ -298,6 +315,111 @@ export default function AddRecord({
           <PlusIcon width={20} height={20} />
         </button>
       </div>
+
+      {sheetMenuOpen && (
+        <Sheet title={tr.spreadsheet.sheetMenu} onClose={() => setSheetMenuOpen(false)}>
+          {renaming ? (
+            <div className="space-y-3">
+              <label className="block text-sm text-navy">
+                {tr.spreadsheet.sheetName}
+                <input
+                  className="mt-1 w-full rounded-btn border border-line bg-surface px-3 py-2 text-sm text-navy"
+                  value={sheetNameDraft}
+                  onChange={(e) => setSheetNameDraft(e.target.value)}
+                  autoFocus
+                />
+              </label>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setRenaming(false)}
+                  className="flex-1 rounded-btn border border-line py-3 text-sm font-medium text-navy"
+                >
+                  {tr.common.cancel}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const name = sheetNameDraft.trim();
+                    if (name) void wb.renameActiveSheet(name);
+                    setRenaming(false);
+                    setSheetMenuOpen(false);
+                  }}
+                  className="flex-1 rounded-btn bg-accent py-3 text-sm font-semibold text-surface"
+                >
+                  {tr.common.save}
+                </button>
+              </div>
+            </div>
+          ) : confirmDelete ? (
+            <div className="space-y-3">
+              <p className="text-sm text-navy">{tr.spreadsheet.deleteSheetConfirm}</p>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(false)}
+                  className="flex-1 rounded-btn border border-line py-3 text-sm font-medium text-navy"
+                >
+                  {tr.common.cancel}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void wb.archiveActiveSheet();
+                    setConfirmDelete(false);
+                    setSheetMenuOpen(false);
+                  }}
+                  className="flex-1 rounded-btn bg-danger py-3 text-sm font-semibold text-surface"
+                >
+                  {tr.spreadsheet.deleteSheet}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-1">
+              <button
+                type="button"
+                className="w-full rounded-btn px-4 py-3 text-left text-sm text-navy hover:bg-header-bg"
+                onClick={() => {
+                  setSheetNameDraft(wb.activeSheet?.name ?? '');
+                  setRenaming(true);
+                }}
+              >
+                {tr.spreadsheet.renameSheet}
+              </button>
+              <button
+                type="button"
+                className="w-full rounded-btn px-4 py-3 text-left text-sm text-navy hover:bg-header-bg"
+                onClick={() => {
+                  void wb.duplicateActiveSheet();
+                  setSheetMenuOpen(false);
+                }}
+              >
+                {tr.spreadsheet.duplicateSheet}
+              </button>
+              {!wb.activeSheet?.isStudentList && (
+                <button
+                  type="button"
+                  className="w-full rounded-btn px-4 py-3 text-left text-sm text-navy hover:bg-header-bg"
+                  onClick={() => {
+                    void wb.markAsStudentList();
+                    setSheetMenuOpen(false);
+                  }}
+                >
+                  {tr.spreadsheet.useAsStudentList}
+                </button>
+              )}
+              <button
+                type="button"
+                className="w-full rounded-btn px-4 py-3 text-left text-sm text-danger hover:bg-header-bg"
+                onClick={() => setConfirmDelete(true)}
+              >
+                {tr.spreadsheet.deleteSheet}
+              </button>
+            </div>
+          )}
+        </Sheet>
+      )}
 
       {panel === 'insert' && (
         <Sheet title={tr.spreadsheet.insert} onClose={() => setPanel(null)}>

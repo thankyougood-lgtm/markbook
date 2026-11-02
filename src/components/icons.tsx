@@ -317,6 +317,16 @@ export function CloseIcon(props: IconProps) {
   );
 }
 
+export function PeopleIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <circle cx="9.5" cy="8.5" r="3.2" stroke="currentColor" strokeWidth="2" />
+      <path d="M3.5 19.5c0-3.1 2.7-5.2 6-5.2s6 2.1 6 5.2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+      <path d="M16 6.2a2.9 2.9 0 0 1 0 5.6M18 14.8c1.7.7 2.8 2.2 2.8 4.2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function ExportIcon(props: IconProps) {
   return (
     <svg {...base} {...props}>

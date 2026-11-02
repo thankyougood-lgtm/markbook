@@ -80,6 +80,7 @@ export interface SheetRow {
   template: SheetTemplate;
   createdAt: number;
   archivedAt: number | null;
+  isStudentList?: boolean;
 }
 
 // One record per sheet: the whole grid from the spreadsheet library plus its

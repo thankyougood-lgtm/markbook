@@ -115,6 +115,24 @@ export const am: Dict = {
     formatNumber: 'ቁጥር',
     formatZeroDecimals: '0 አስርዮሽ',
     formatOneDecimal: '1 አስርዮሽ',
-    formatTwoDecimals: '2 አስርዮሽ'
+    formatTwoDecimals: '2 አስርዮሽ',
+    sheetMenu: 'የሉህ አማራጮች',
+    renameSheet: 'ስም ቀይር',
+    duplicateSheet: 'አባዛ',
+    deleteSheet: 'አጥፋ',
+    deleteSheetConfirm: 'ይህ ሉህ ይጠፋል? ይቀመጣል እና መመለስ ይቻላል።',
+    useAsStudentList: 'የተማሪ ዝርዝር አድርገው',
+    studentListBadge: 'የተማሪ ዝርዝር',
+    renameSheetTitle: 'የሉህ ስም ቀይር',
+    sheetName: 'የሉህ ስም',
+    searchInSheet: 'በሉሁ ውስጥ ፈልግ',
+    searchPlaceholder: 'ጽሑፍ ፈልግ',
+    searchNext: 'ቀጣይ ውጤት',
+    searchNoMatches: 'ውጤት የለም',
+    moreOptions: 'ተጨማሪ አማራጮች',
+    freezeHeaderRow: 'የራስጌ ረድፍ አስቀምጥ',
+    columnWidth: 'የአምድ ስፋት',
+    rowHeight: 'የረድፍ ቁመት',
+    apply: 'ተግብር'
   }
 };
