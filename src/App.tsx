@@ -33,15 +33,17 @@ export default function App() {
 
   return (
     <div className="min-h-full" style={{ paddingBottom: 'calc(var(--nav-height) + var(--nav-gap) * 2 + var(--safe-bottom))' }}>
-      <header className="flex items-center justify-end px-4 pt-5">
-        <HamburgerButton onOpen={() => setMenuOpen(true)} />
-      </header>
+      {route !== 'add-record' && (
+        <header className="flex items-center justify-end px-4 pt-5">
+          <HamburgerButton onOpen={() => setMenuOpen(true)} />
+        </header>
+      )}
 
       <main>
         {route === 'home' && <Home />}
         {route === 'add-record' && (
           <ErrorBoundary>
-            <AddRecord />
+            <AddRecord onOpenMenu={() => setMenuOpen(true)} />
           </ErrorBoundary>
         )}
         {route === 'attendance' && <Attendance />}

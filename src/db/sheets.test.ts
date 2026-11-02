@@ -36,7 +36,7 @@ describe('sheets repository', () => {
   it('seeds the roster template with the four leading headers', async () => {
     const sheet = await createSheet({ classId: 1, semester: 1, template: 'roster' });
     const data = await loadSheetData(sheet.id);
-    expect((data?.data as { headers: string[] }).headers).toEqual([...ROSTER_HEADERS]);
+    expect(data?.data).toEqual([[...ROSTER_HEADERS]]);
     expect(data?.rowCount).toBe(100);
     expect(data?.colCount).toBe(26);
   });
@@ -54,7 +54,7 @@ describe('sheets repository', () => {
 
   it('duplicates a sheet with its data', async () => {
     const sheet = await createSheet({ classId: 1, semester: 1, name: 'Class roster', template: 'roster' });
-    await saveSheetData(sheet.id, { headers: ['NO'] }, 120, 30);
+    await saveSheetData(sheet.id, [['NO']], 120, 30);
     const copy = await duplicateSheet(sheet.id);
     expect(copy.id).not.toBe(sheet.id);
     expect(copy.name).toBe('Class roster copy');

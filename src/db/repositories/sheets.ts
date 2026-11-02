@@ -7,11 +7,6 @@ export const ROSTER_HEADERS = ['NO', 'Students name', 'Sex', 'Age'];
 export const DEFAULT_ROW_COUNT = 100;
 export const DEFAULT_COL_COUNT = 26;
 
-// What a fresh sheet holds before the grid library touches it. Stored as plain
-// JSON so Stage 2 can hand it straight to the library.
-export interface SheetPayload {
-  headers: string[];
-}
 
 export interface NewSheetInput {
   classId: number;
@@ -31,8 +26,10 @@ export async function getSheet(id: number): Promise<SheetRow | undefined> {
   return db.sheets.get(id);
 }
 
-function initialPayload(template: SheetTemplate): SheetPayload | null {
-  return template === 'roster' ? { headers: [...ROSTER_HEADERS] } : null;
+// Row 1 of the roster template; every other cell starts blank, exactly as the
+// grid library wants it (a 2D array of values).
+function initialPayload(template: SheetTemplate): string[][] | null {
+  return template === 'roster' ? [[...ROSTER_HEADERS]] : null;
 }
 
 export async function createSheet(input: NewSheetInput): Promise<SheetRow> {

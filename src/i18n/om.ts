@@ -53,5 +53,26 @@ export const om: Dict = {
     name: 'Maqaa barattootaa',
     sex: 'Saala',
     age: 'Umurii'
+  },
+  spreadsheet: {
+    export: 'Ergi',
+    saved: 'Olkaa\'ame',
+    saving: 'Olkaa\'aa jira...',
+    unsaved: 'Amma hin olkaa\'amne',
+    saveFailed: 'Olkaa\'uun hin danda\'amne',
+    undo: 'Deebisi',
+    redo: 'Irra deebi\'i',
+    format: 'Boccee',
+    search: 'Barbaadi',
+    more: 'Dabalata',
+    newSheet: 'Waraqaa haaraa',
+    blankSheet: 'Waraqaa duwwaa',
+    rosterSheet: 'Fakkeenya tarree kutaa',
+    addSheet: 'Waraqaa dabali',
+    loadingGrid: 'Gabateen fe\'amaa jira...',
+    gridFailed: 'Gabateen hin fe\'amne',
+    createClassToStart: 'Jalqabuuf kutaa uumi',
+    noClassTitle: 'Ammattiin kutaan hin jiru',
+    classSheetTitle: 'Kutaa fi semisteera'
   }
 };

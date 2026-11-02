@@ -53,5 +53,26 @@ export const am: Dict = {
     name: 'የተማሪ ስም',
     sex: 'ጾታ',
     age: 'ዕድሜ'
+  },
+  spreadsheet: {
+    export: 'ላክ',
+    saved: 'ተቀምጧል',
+    saving: 'በማስቀመጥ ላይ...',
+    unsaved: 'ገና አልተቀመጠም',
+    saveFailed: 'ማስቀመጥ አልተቻለም',
+    undo: 'ቀልብስ',
+    redo: 'ድገም',
+    format: 'ቅርጸት',
+    search: 'ፈልግ',
+    more: 'ተጨማሪ',
+    newSheet: 'አዲስ ሉህ',
+    blankSheet: 'ባዶ ሉህ',
+    rosterSheet: 'የክፍል ዝርዝር አብነት',
+    addSheet: 'ሉህ ጨምር',
+    loadingGrid: 'ሠንጠረዡ በመጫን ላይ...',
+    gridFailed: 'ሠንጠረዡን መጫን አልተቻለም',
+    createClassToStart: 'ለመጀመር ክፍል ይፍጠሩ',
+    noClassTitle: 'እስካሁን ክፍል የለም',
+    classSheetTitle: 'ክፍል እና ሴሚስተር'
   }
 };

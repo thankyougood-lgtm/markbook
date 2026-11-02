@@ -50,6 +50,27 @@ export const en = {
     name: 'Students name',
     sex: 'Sex',
     age: 'Age'
+  },
+  spreadsheet: {
+    export: 'Export',
+    saved: 'Saved',
+    saving: 'Saving...',
+    unsaved: 'Not saved yet',
+    saveFailed: 'Could not save',
+    undo: 'Undo',
+    redo: 'Redo',
+    format: 'Format',
+    search: 'Search',
+    more: 'More',
+    newSheet: 'New sheet',
+    blankSheet: 'Blank sheet',
+    rosterSheet: 'Class roster template',
+    addSheet: 'Add sheet',
+    loadingGrid: 'Loading spreadsheet...',
+    gridFailed: 'The spreadsheet could not be loaded',
+    createClassToStart: 'Create a class to start',
+    noClassTitle: 'No class yet',
+    classSheetTitle: 'Class and semester'
   }
 };
 

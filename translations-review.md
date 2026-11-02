@@ -3,6 +3,11 @@
 Strings below are drafts written by an engineer and must be checked by a native
 speaker before release.
 
+## Spreadsheet (stage 2)
+- `spreadsheet.*` (export, saved, saving, unsaved, saveFailed, undo, redo, format,
+  search, more, newSheet, blankSheet, rosterSheet, addSheet, loadingGrid,
+  gridFailed, createClassToStart, noClassTitle, classSheetTitle) — all drafts.
+
 ## Amharic (am)
 - `nav.home` መነሻ — "Home / start"
 - `nav.addRecord` መዝገብ ጨምር — "add a record"
