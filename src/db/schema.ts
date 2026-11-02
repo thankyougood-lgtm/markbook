@@ -69,6 +69,29 @@ export interface SettingRow {
   value: unknown;
 }
 
+export type SheetTemplate = 'blank' | 'roster';
+
+export interface SheetRow {
+  id: number;
+  classId: number;
+  semester: Semester;
+  name: string;
+  order: number;
+  template: SheetTemplate;
+  createdAt: number;
+  archivedAt: number | null;
+}
+
+// One record per sheet: the whole grid from the spreadsheet library plus its
+// dimensions, so a big sheet saves in a single write.
+export interface SheetDataRow {
+  sheetId: number;
+  data: unknown;
+  rowCount: number;
+  colCount: number;
+  updatedAt: number;
+}
+
 export class MarkBookDB extends Dexie {
   classes!: EntityTable<ClassRow, 'id'>;
   subjects!: EntityTable<SubjectRow, 'id'>;
@@ -78,6 +101,8 @@ export class MarkBookDB extends Dexie {
   attendanceSessions!: EntityTable<AttendanceSessionRow, 'id'>;
   attendanceRecords!: EntityTable<AttendanceRecordRow, 'sessionId'>;
   settings!: EntityTable<SettingRow, 'key'>;
+  sheets!: EntityTable<SheetRow, 'id'>;
+  sheetData!: EntityTable<SheetDataRow, 'sheetId'>;
 
   constructor(name = 'markbook') {
     super(name);
@@ -91,6 +116,12 @@ export class MarkBookDB extends Dexie {
       attendanceSessions: '++id, classId, date, period, subjectId',
       attendanceRecords: '[sessionId+studentId], status',
       settings: 'key, value'
+    });
+
+    // v3: spreadsheets. New tables only; v1 and v2 data is untouched.
+    this.version(3).stores({
+      sheets: '++id, classId, semester, name, order, template, createdAt, archivedAt',
+      sheetData: 'sheetId, updatedAt'
     });
 
     // v2: link students to their row in the student list sheet. v1 is untouched;
