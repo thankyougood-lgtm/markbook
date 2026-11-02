@@ -8,6 +8,11 @@ speaker before release.
   search, more, newSheet, blankSheet, rosterSheet, addSheet, loadingGrid,
   gridFailed, createClassToStart, noClassTitle, classSheetTitle) — all drafts.
 
+## Attendance (stage 7)
+- `attendance.*` (title, date, period, subject, subjectPlaceholder, no, studentName,
+  sex, status, percent, markAllPresent, present, absent, late, excused, summary,
+  saved, saving, saveFailed, noStudentsTitle, noStudentsBody, goToAddRecord) — all drafts.
+
 ## Stage 6/7 fixes
 - `spreadsheet.headerMissingBanner`, `spreadsheet.addHeaders` — drafts.
 

@@ -21,6 +21,35 @@ export const en = {
     analytics: 'Analytics',
     settings: 'Settings'
   },
+  attendance: {
+    title: 'Attendance',
+    date: 'Date',
+    period: 'Period',
+    subject: 'Subject',
+    subjectPlaceholder: 'Type a subject name',
+    no: 'NO',
+    studentName: 'Students name',
+    sex: 'Sex',
+    status: 'Status',
+    percent: '%',
+    markAllPresent: 'Mark all present',
+    present: 'present',
+    absent: 'absent',
+    late: 'late',
+    excused: 'excused',
+    summary: 'Summary',
+    saved: 'Saved',
+    saving: 'Saving...',
+    saveFailed: 'Could not save',
+    noStudentsTitle: 'No students yet',
+    noStudentsBody: 'Add students in Add Record first',
+    goToAddRecord: 'Go to Add Record',
+    statusP: 'P',
+    statusA: 'A',
+    statusL: 'L',
+    statusE: 'E'
+  },
+
   placeholder: {
     title: 'Coming soon',
     body: 'This page is part of a later version.'

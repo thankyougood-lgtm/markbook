@@ -24,6 +24,35 @@ export const om: Dict = {
     analytics: 'Xiinxala',
     settings: 'Qindaa\'ina'
   },
+  attendance: {
+    title: 'Hordoffii',
+    date: 'Guyyaa',
+    period: 'Yeroo',
+    subject: 'Barnoota',
+    subjectPlaceholder: 'Maqaa barnootaa barreessi',
+    no: 'Lakkoofsa',
+    studentName: 'Maqaa barattootaa',
+    sex: 'Saala',
+    status: 'Haala',
+    percent: '%',
+    markAllPresent: 'Hunda argamaniin mallatteessi',
+    present: 'argame',
+    absent: 'hin argamne',
+    late: 'ture',
+    excused: 'hayyama',
+    summary: 'Cuunfaa',
+    saved: 'Olkaa\'ame',
+    saving: 'Olkaa\'aa jira...',
+    saveFailed: 'Olkaa\'uun hin danda\'amne',
+    noStudentsTitle: 'Ammattiin barattoonni hin jiran',
+    noStudentsBody: 'Duraan Galmee Dabali keessatti barattoota dabali',
+    goToAddRecord: 'Gara Galmee Dabali deemi',
+    statusP: 'P',
+    statusA: 'A',
+    statusL: 'L',
+    statusE: 'E'
+  },
+
   placeholder: {
     title: 'Dhiyootti dhufa',
     body: 'Fuulli kun gosa gara fuulduraatti ni dabalama.'

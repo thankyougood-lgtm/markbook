@@ -19,6 +19,7 @@
   --select-highlight: #cfdaf3;
   --danger: #e0482f;
   --success: #1f9d55;
+  --warning: #b7791f;
 
   --sheet-accent: var(--accent);
   --sheet-grid-line: #e3e8f2;
@@ -60,6 +61,7 @@
   --select-highlight: #2b3d6e;
   --danger: #f06a52;
   --success: #43c17f;
+  --warning: #e0a845;
 
   --sheet-grid-line: #26345e;
   --sheet-header-bg: #1b2a55;
@@ -167,6 +169,31 @@
 .sheet-grid .jss_worksheet .selection,
 .sheet-grid .jss_worksheet .highlight {
   background-color: var(--select-highlight);
+}
+
+/*
+ * Attendance table: the spreadsheet look, with NO and Students name pinned.
+ */
+.att-no {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  width: 44px;
+  background: var(--surface);
+}
+
+.att-name {
+  position: sticky;
+  left: 44px;
+  z-index: 1;
+  background: var(--surface);
+  min-width: 140px;
+}
+
+thead .att-no,
+thead .att-name {
+  background: var(--header-bg);
+  z-index: 11;
 }
 
 /*

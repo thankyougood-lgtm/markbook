@@ -5,7 +5,8 @@ import MenuSheet from './components/MenuSheet';
 import Home from './pages/Home';
 import AddRecord from './pages/AddRecord';
 import ErrorBoundary from './components/ErrorBoundary';
-import { Analytics, Attendance, Settings } from './pages/Others';
+import Attendance from './pages/Attendance';
+import { Analytics, Settings } from './pages/Others';
 
 export type Route = 'home' | 'add-record' | 'attendance' | 'analytics' | 'settings';
 
@@ -56,7 +57,11 @@ export default function App() {
             <AddRecord onOpenMenu={() => setMenuOpen(true)} onEditingChange={setSheetEditing} />
           </ErrorBoundary>
         )}
-        {route === 'attendance' && <Attendance />}
+        {route === 'attendance' && (
+          <ErrorBoundary>
+            <Attendance onOpenMenu={() => setMenuOpen(true)} />
+          </ErrorBoundary>
+        )}
         {route === 'analytics' && <Analytics />}
         {route === 'settings' && <Settings />}
       </main>

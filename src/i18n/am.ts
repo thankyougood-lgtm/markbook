@@ -24,6 +24,35 @@ export const am: Dict = {
     analytics: 'ትንታኔ',
     settings: 'ቅንብሮች'
   },
+  attendance: {
+    title: 'ክትትል',
+    date: 'ቀን',
+    period: 'ጊዜ',
+    subject: 'ትምህርት',
+    subjectPlaceholder: 'የትምህርት ስም ጻፍ',
+    no: 'ቁጥር',
+    studentName: 'የተማሪ ስም',
+    sex: 'ጾታ',
+    status: 'ሁኔታ',
+    percent: '%',
+    markAllPresent: 'ሁሉንም እንደተገኙ ምልክት አድርግ',
+    present: 'ተገኝቷል',
+    absent: 'ቀርቷል',
+    late: 'ዘግይቷል',
+    excused: 'ፈቃድ',
+    summary: 'ማጠቃለያ',
+    saved: 'ተቀምጧል',
+    saving: 'በማስቀመጥ ላይ...',
+    saveFailed: 'ማስቀመጥ አልተቻለም',
+    noStudentsTitle: 'እስካሁን ተማሪ የለም',
+    noStudentsBody: 'መጀመሪያ በመዝገብ ጨምር ተማሪዎችን ያክሉ',
+    goToAddRecord: 'ወደ መዝገብ ጨምር ሂድ',
+    statusP: 'P',
+    statusA: 'A',
+    statusL: 'L',
+    statusE: 'E'
+  },
+
   placeholder: {
     title: 'በቅርቡ ይመጣል',
     body: 'ይህ ገጽ በቀጣይ ስሪት ውስጥ ይካተታል።'
