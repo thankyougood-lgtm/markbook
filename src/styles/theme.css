@@ -170,6 +170,20 @@
 }
 
 /*
+ * Frozen header row. "Freeze header row" pins data row 1 below the sticky
+ * column-letter thead so it stays visible while the sheet scrolls.
+ */
+.sheet-grid .jss_worksheet > tbody > tr.frozen-row > td {
+  position: sticky;
+  top: 28px;
+  z-index: 4;
+  background-color: var(--sheet-header-bg);
+  color: var(--navy);
+  font-weight: 600;
+  box-shadow: inset 0 -2px 0 var(--sheet-accent);
+}
+
+/*
  * Selection handles. The library draws one square corner marker at the bottom
  * right of the range; the reference wants a small white circle ringed in
  * --sheet-accent. The top-left handle is drawn here as a pseudo-element on the
