@@ -30,7 +30,7 @@ export interface StudentRow {
   classId: number;
   serialNo: number;
   fullName: string;
-  sex: Sex;
+  sex: Sex | null;
   age: number | null;
   order: number;
   archivedAt: number | null;

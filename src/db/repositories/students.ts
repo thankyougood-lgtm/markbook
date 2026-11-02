@@ -7,12 +7,26 @@ export async function listStudents(classId: number): Promise<StudentRow[]> {
 
 export async function addStudent(
   classId: number,
-  input: { fullName: string; sex: Sex; age: number | null }
+  input: {
+    fullName: string;
+    sex: Sex | null;
+    age: number | null;
+    serialNo?: number;
+    order?: number;
+  }
 ): Promise<number> {
   const existing = await listStudents(classId);
-  const order = existing.length ? Math.max(...existing.map((s) => s.order)) + 1 : 0;
-  const serialNo = existing.length ? Math.max(...existing.map((s) => s.serialNo)) + 1 : 1;
-  return db.students.add({ classId, serialNo, order, archivedAt: null, ...input } as StudentRow);
+  const order = input.order ?? (existing.length ? Math.max(...existing.map((s) => s.order)) + 1 : 0);
+  const serialNo = input.serialNo ?? (existing.length ? Math.max(...existing.map((s) => s.serialNo)) + 1 : 1);
+  return db.students.add({
+    classId,
+    serialNo,
+    order,
+    archivedAt: null,
+    fullName: input.fullName,
+    sex: input.sex,
+    age: input.age
+  } as StudentRow);
 }
 
 export async function updateStudent(
