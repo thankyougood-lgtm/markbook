@@ -18,6 +18,16 @@ export interface SpreadsheetGridProps {
   onSelectionChange?: (selection: GridSelection) => void;
   /** Fires when a cell editor opens (true) or closes (false). */
   onEditingChange?: (editing: boolean) => void;
+  /** Column indexes the user cannot edit. */
+  readOnlyColumns?: number[];
+  /** Every cell is read-only (used by the Attendance sheet). */
+  readOnlyCells?: boolean;
+  /** Column indexes pinned to the left. */
+  freezeColumns?: number;
+  /** Pin the first data row as a header row. */
+  freezeFirstRow?: boolean;
+  /** Fires on every tap inside the sheet with the cell coordinates. */
+  onCellTap?: (x: number, y: number) => void;
   onDirty: () => void;
   loadingLabel: string;
   failedLabel: string;
@@ -33,6 +43,11 @@ export default function SpreadsheetGrid({
   gridRef,
   onSelectionChange,
   onEditingChange,
+  readOnlyColumns,
+  readOnlyCells,
+  freezeColumns,
+  freezeFirstRow,
+  onCellTap,
   onDirty,
   loadingLabel,
   failedLabel
@@ -44,12 +59,15 @@ export default function SpreadsheetGrid({
   selectionRef.current = onSelectionChange;
   const editingRef = useRef(onEditingChange);
   editingRef.current = onEditingChange;
+  const cellTapRef = useRef(onCellTap);
+  cellTapRef.current = onCellTap;
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let alive = true;
     let instance: WorksheetInstance[] | null = null;
     let destroy: (() => void) | null = null;
+    let removeClickListener: (() => void) | null = null;
     const host = hostRef.current;
     if (!host) return;
 
@@ -71,11 +89,36 @@ export default function SpreadsheetGrid({
               minDimensions: [colCount, rowCount],
               defaultRowHeight: 34,
               tableOverflow: true,
-              tableHeight: '100%'
+              tableHeight: '100%',
+              freezeColumns: freezeColumns ?? 0,
+              // Column options are positional, so the array must cover every column.
+              // There is no worksheet-level read-only switch, so a fully locked
+              // sheet locks each of its columns.
+              columns: Array.from({ length: colCount }, (_, index) => ({
+                readOnly: readOnlyCells === true || (readOnlyColumns ?? []).includes(index)
+              }))
             }
           ]
         });
         destroy = () => mod.default.destroy(host as Parameters<typeof mod.default.destroy>[0]);
+        if (freezeFirstRow) {
+          const table = host.querySelector('table.jss_worksheet');
+          table?.querySelector('tbody > tr')?.classList.add('frozen-row');
+        }
+        // The library has no per-cell tap event, so translate the click target.
+        const onClick = (event: Event) => {
+          const target = (event.target as HTMLElement | null)?.closest('td');
+          if (!target) return;
+          const row = target.parentElement;
+          const body = row?.parentElement;
+          if (!row || !body || !body.parentElement?.classList.contains('jss_worksheet')) return;
+          const y = Array.from(body.children).indexOf(row) - 1;
+          const x = Array.from(row.children).indexOf(target) - 1;
+          if (x >= 0 && y >= 0) cellTapRef.current?.(x, y);
+        };
+        host.addEventListener('click', onClick);
+        const removeClick = () => host.removeEventListener('click', onClick);
+        removeClickListener = removeClick;
         if (gridRef) {
           const ws = () => instance?.[0] ?? null;
           gridRef.current = {
@@ -217,6 +260,7 @@ export default function SpreadsheetGrid({
 
     return () => {
       alive = false;
+      removeClickListener?.();
       try {
         destroy?.();
       } catch {
