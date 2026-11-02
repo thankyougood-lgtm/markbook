@@ -153,6 +153,24 @@ export default function SpreadsheetGrid({
               w.paste(x, y, text);
             },
             mergeSelection: () => ws()?.setMerge(),
+            setNumberFormat: (decimals) => {
+              const w = ws();
+              if (!w) return;
+              const [x1, y1, x2, y2] = w.getSelection();
+              for (let y = y1; y <= y2; y += 1) {
+                for (let x = x1; x <= x2; x += 1) {
+                  const name = `${String.fromCharCode(65 + x)}${y + 1}`;
+                  const raw = w.getValueFromCoords(x, y);
+                  if (raw === null || raw === '') continue;
+                  const n = Number(raw);
+                  if (!Number.isFinite(n)) continue;
+                  const text = decimals === null ? String(n) : n.toFixed(decimals);
+                  w.setValueFromCoords(x, y, text, true);
+                  void name;
+                }
+              }
+              dirtyRef.current();
+            },
             applyStyle: (style) => {
               const w = ws();
               if (!w) return;

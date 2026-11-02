@@ -56,6 +56,11 @@ describe('AddRecord page', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Sheet1' })).toBeTruthy());
     expect(screen.getByTestId('grid')).toBeTruthy();
     expect(screen.getByLabelText('Cell content')).toBeTruthy();
+    expect(screen.getByLabelText('Copy')).toBeTruthy();
+    expect(screen.getByLabelText('Paste')).toBeTruthy();
+    expect(screen.getByLabelText('Format cells')).toBeTruthy();
+    expect(screen.getByLabelText('Insert')).toBeTruthy();
+    expect(screen.getByLabelText('Delete')).toBeTruthy();
     expect(screen.getByText('11A - I')).toBeTruthy();
     expect(consoleErrors).toEqual([]);
   });

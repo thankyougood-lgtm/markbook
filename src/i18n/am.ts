@@ -97,6 +97,24 @@ export const am: Dict = {
     textKeyboard: 'የጽሑፍ ኪቦርድ',
     pickDate: 'ቀን ምረጥ',
     hideKeyboard: 'ኪቦርድ ደብቅ',
-    selectionHandles: 'የምርጫ እጀታዎች'
+    selectionHandles: 'የምርጫ እጀታዎች',
+    rowAbove: 'ከላይ ረድፍ',
+    rowBelow: 'ከታች ረድፍ',
+    columnLeft: 'ወደ ግራ አምድ',
+    columnRight: 'ወደ ቀኝ አምድ',
+    deleteRow: 'ረድፍ አጥፋ',
+    deleteColumn: 'አምድ አጥፋ',
+    clearContents: 'ይዘት አጽዳ',
+    bold: 'ደማቅ',
+    italic: 'ያጋደለ',
+    alignLeft: 'ወደ ግራ አስተካክል',
+    alignCenter: 'መሃል አስተካክል',
+    alignRight: 'ወደ ቀኝ አስተካክል',
+    numberFormat: 'የቁጥር ቅርጸት',
+    formatGeneral: 'አጠቃላይ',
+    formatNumber: 'ቁጥር',
+    formatZeroDecimals: '0 አስርዮሽ',
+    formatOneDecimal: '1 አስርዮሽ',
+    formatTwoDecimals: '2 አስርዮሽ'
   }
 };

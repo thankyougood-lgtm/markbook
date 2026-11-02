@@ -97,6 +97,24 @@ export const om: Dict = {
     textKeyboard: 'Kiboardii barruu',
     pickDate: 'Guyyaa filadhu',
     hideKeyboard: 'Kiboardii dhoksi',
-    selectionHandles: 'Qabduu filannoo'
+    selectionHandles: 'Qabduu filannoo',
+    rowAbove: 'Tarree ol jiru',
+    rowBelow: 'Tarree gad jiru',
+    columnLeft: 'Utubaa bitaatti',
+    columnRight: 'Utubaa mirgaatti',
+    deleteRow: 'Tarree haqi',
+    deleteColumn: 'Utubaa haqi',
+    clearContents: 'Qabiyyee qulqulleessi',
+    bold: 'Gurraacha',
+    italic: 'Garaagarummaa',
+    alignLeft: 'Bitaatti qindeessi',
+    alignCenter: 'Gidduutti qindeessi',
+    alignRight: 'Mirgaatti qindeessi',
+    numberFormat: 'Boccee lakkoofsaa',
+    formatGeneral: 'Waliigala',
+    formatNumber: 'Lakkoofsa',
+    formatZeroDecimals: '0 asraa',
+    formatOneDecimal: '1 asraa',
+    formatTwoDecimals: '2 asraa'
   }
 };

@@ -94,7 +94,25 @@ export const en = {
     textKeyboard: 'Text keyboard',
     pickDate: 'Pick date',
     hideKeyboard: 'Hide keyboard',
-    selectionHandles: 'Selection handles'
+    selectionHandles: 'Selection handles',
+    rowAbove: 'Row above',
+    rowBelow: 'Row below',
+    columnLeft: 'Column left',
+    columnRight: 'Column right',
+    deleteRow: 'Delete row',
+    deleteColumn: 'Delete column',
+    clearContents: 'Clear contents',
+    bold: 'Bold',
+    italic: 'Italic',
+    alignLeft: 'Align left',
+    alignCenter: 'Align center',
+    alignRight: 'Align right',
+    numberFormat: 'Number format',
+    formatGeneral: 'General',
+    formatNumber: 'Number',
+    formatZeroDecimals: '0 decimals',
+    formatOneDecimal: '1 decimal',
+    formatTwoDecimals: '2 decimals'
   }
 };
 

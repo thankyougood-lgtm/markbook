@@ -39,6 +39,7 @@ export interface GridApi {
   pasteFromClipboard?: () => Promise<void>;
   applyStyle?: (style: Record<string, string>) => void;
   mergeSelection?: () => void;
+  setNumberFormat?: (decimals: number | null) => void;
 }
 
 const SAVE_DELAY_MS = 300;

@@ -22,6 +22,9 @@ import {
   EditButtons,
   KeyboardPill,
   SelectionToolbar,
+  InsertMenu,
+  DeleteMenu,
+  FormatPanel,
   cellLabel
 } from '../sheet/SheetChrome';
 
@@ -109,6 +112,7 @@ export default function AddRecord({
   const [classSheetOpen, setClassSheetOpen] = useState(false);
   const [newSheetOpen, setNewSheetOpen] = useState(false);
   const [creatingClass, setCreatingClass] = useState(false);
+  const [panel, setPanel] = useState<'insert' | 'delete' | 'format' | null>(null);
 
   const saveLabel =
     wb.saveState === 'saving'
@@ -246,7 +250,13 @@ export default function AddRecord({
 
       {wb.classRow && wb.activeSheet && !editing && (
         <div className="px-2 pb-1">
-          <SelectionToolbar tr={tr} gridRef={wb.gridRef} />
+          <SelectionToolbar
+            tr={tr}
+            gridRef={wb.gridRef}
+            onFormat={() => setPanel('format')}
+            onInsert={() => setPanel('insert')}
+            onDelete={() => setPanel('delete')}
+          />
         </div>
       )}
 
@@ -288,6 +298,24 @@ export default function AddRecord({
           <PlusIcon width={20} height={20} />
         </button>
       </div>
+
+      {panel === 'insert' && (
+        <Sheet title={tr.spreadsheet.insert} onClose={() => setPanel(null)}>
+          <InsertMenu tr={tr} gridRef={wb.gridRef} onClose={() => setPanel(null)} />
+        </Sheet>
+      )}
+
+      {panel === 'delete' && (
+        <Sheet title={tr.spreadsheet.deleteCells} onClose={() => setPanel(null)}>
+          <DeleteMenu tr={tr} gridRef={wb.gridRef} onClose={() => setPanel(null)} />
+        </Sheet>
+      )}
+
+      {panel === 'format' && (
+        <Sheet title={tr.spreadsheet.formatCells} onClose={() => setPanel(null)}>
+          <FormatPanel tr={tr} gridRef={wb.gridRef} onClose={() => setPanel(null)} />
+        </Sheet>
+      )}
 
       {newSheetOpen && (
         <Sheet title={tr.spreadsheet.newSheet} onClose={() => setNewSheetOpen(false)}>

@@ -3,12 +3,24 @@ import type { Dict } from '../i18n';
 import type { CellValue } from './SpreadsheetGrid';
 import type { GridApi, GridSelection } from './useWorkbook';
 import {
+  AlignCenterIcon,
+  AlignLeftIcon,
+  AlignRightIcon,
   ArrowLeftIcon,
   ArrowRightIcon,
+  BoldIcon,
   CheckIcon,
   CloseIcon,
+  CopyIcon,
+  DeleteIcon,
+  FormatIcon,
   HideKeyboardIcon,
+  ItalicIcon,
+  MergeIcon,
+  PasteIcon,
+  PlusIcon,
   RedoIcon,
+  ScissorsIcon,
   UndoIcon
 } from '../components/icons';
 
@@ -54,30 +66,117 @@ export function CellBar({
 
 export function SelectionToolbar({
   tr,
-  gridRef
+  gridRef,
+  onFormat,
+  onInsert,
+  onDelete
 }: {
   tr: Dict;
   gridRef: MutableRefObject<GridApi | null>;
+  onFormat: () => void;
+  onInsert: () => void;
+  onDelete: () => void;
 }) {
-  // Only actions that actually work are rendered; the rest arrive with the
-  // stage that implements them, so the toolbar never shows a dead button.
+  // Only actions that actually work are rendered, so the toolbar never shows a
+  // dead button.
   return (
     <div className={pill} role="toolbar" aria-label={tr.spreadsheet.more}>
-      <button
-        type="button"
-        aria-label={tr.spreadsheet.undo}
-        className={pillButton}
-        onClick={() => gridRef.current?.undo?.()}
-      >
+      <button type="button" aria-label={tr.spreadsheet.undo} className={pillButton} onClick={() => gridRef.current?.undo?.()}>
         <UndoIcon width={24} height={24} />
+      </button>
+      <button type="button" aria-label={tr.spreadsheet.redo} className={pillButton} onClick={() => gridRef.current?.redo?.()}>
+        <RedoIcon width={24} height={24} />
+      </button>
+      <button type="button" aria-label={tr.spreadsheet.copy} className={pillButton} onClick={() => gridRef.current?.copy?.()}>
+        <CopyIcon width={24} height={24} />
+      </button>
+      <button type="button" aria-label={tr.spreadsheet.cut} className={pillButton} onClick={() => gridRef.current?.copy?.(true)}>
+        <ScissorsIcon width={24} height={24} />
       </button>
       <button
         type="button"
-        aria-label={tr.spreadsheet.redo}
+        aria-label={tr.spreadsheet.paste}
         className={pillButton}
-        onClick={() => gridRef.current?.redo?.()}
+        onClick={() => {
+          void gridRef.current?.pasteFromClipboard?.().catch(() => undefined);
+        }}
       >
-        <RedoIcon width={24} height={24} />
+        <PasteIcon width={24} height={24} />
+      </button>
+      <button type="button" aria-label={tr.spreadsheet.formatCells} className={pillButton} onClick={onFormat}>
+        <FormatIcon width={24} height={24} />
+      </button>
+      <button type="button" aria-label={tr.spreadsheet.insert} className={pillButton} onClick={onInsert}>
+        <PlusIcon width={24} height={24} />
+      </button>
+      <button type="button" aria-label={tr.spreadsheet.deleteCells} className={pillButton} onClick={onDelete}>
+        <DeleteIcon width={24} height={24} />
+      </button>
+      <button type="button" aria-label={tr.spreadsheet.mergeCells} className={pillButton} onClick={() => gridRef.current?.mergeSelection?.()}>
+        <MergeIcon width={24} height={24} />
+      </button>
+    </div>
+  );
+}
+
+export function InsertMenu({
+  tr,
+  gridRef,
+  onClose
+}: {
+  tr: Dict;
+  gridRef: MutableRefObject<GridApi | null>;
+  onClose: () => void;
+}) {
+  const run = (action: () => void) => {
+    action();
+    onClose();
+  };
+  const item =
+    'w-full rounded-btn px-4 py-3 text-left text-sm text-navy hover:bg-header-bg';
+  return (
+    <div className="space-y-1">
+      <button type="button" className={item} onClick={() => run(() => gridRef.current?.insertRow?.(true))}>
+        {tr.spreadsheet.rowAbove}
+      </button>
+      <button type="button" className={item} onClick={() => run(() => gridRef.current?.insertRow?.(false))}>
+        {tr.spreadsheet.rowBelow}
+      </button>
+      <button type="button" className={item} onClick={() => run(() => gridRef.current?.insertColumn?.(true))}>
+        {tr.spreadsheet.columnLeft}
+      </button>
+      <button type="button" className={item} onClick={() => run(() => gridRef.current?.insertColumn?.(false))}>
+        {tr.spreadsheet.columnRight}
+      </button>
+    </div>
+  );
+}
+
+export function DeleteMenu({
+  tr,
+  gridRef,
+  onClose
+}: {
+  tr: Dict;
+  gridRef: MutableRefObject<GridApi | null>;
+  onClose: () => void;
+}) {
+  const run = (action: () => void) => {
+    action();
+    onClose();
+  };
+  const item =
+    'w-full rounded-btn px-4 py-3 text-left text-sm text-navy hover:bg-header-bg';
+  return (
+    <div className="space-y-1">
+      <button type="button" className={item} onClick={() => run(() => gridRef.current?.deleteRow?.())}>
+        {tr.spreadsheet.deleteRow}
+      </button>
+      <button type="button" className={item} onClick={() => run(() => gridRef.current?.deleteColumn?.())}>
+        {tr.spreadsheet.deleteColumn}
+      </button>
+      <button type="button" className={item} onClick={() => run(() => gridRef.current?.clearContents?.())}>
+        {tr.spreadsheet.clearContents}
       </button>
     </div>
   );
@@ -154,6 +253,85 @@ export function KeyboardPill({
         onClick={() => gridRef.current?.hideKeyboard?.()}
       >
         <HideKeyboardIcon width={24} height={24} />
+      </button>
+    </div>
+  );
+}
+
+const FILLS = ['#fff59d', '#b2dfdb', '#bbdefb', '#f8bbd0', ''];
+
+export function FormatPanel({
+  tr,
+  gridRef,
+  onClose
+}: {
+  tr: Dict;
+  gridRef: MutableRefObject<GridApi | null>;
+  onClose: () => void;
+}) {
+  const apply = (style: Record<string, string>) => gridRef.current?.applyStyle?.(style);
+  const row = 'flex items-center gap-1 flex-wrap';
+  const btn = 'flex h-10 w-10 items-center justify-center rounded-btn text-navy hover:bg-header-bg';
+
+  return (
+    <div className="space-y-3">
+      <div className={row}>
+        <button type="button" aria-label={tr.spreadsheet.bold} className={btn} onClick={() => apply({ 'font-weight': 'bold' })}>
+          <BoldIcon width={22} height={22} />
+        </button>
+        <button type="button" aria-label={tr.spreadsheet.italic} className={btn} onClick={() => apply({ 'font-style': 'italic' })}>
+          <ItalicIcon width={22} height={22} />
+        </button>
+        <button type="button" aria-label={tr.spreadsheet.alignLeft} className={btn} onClick={() => apply({ 'text-align': 'left' })}>
+          <AlignLeftIcon width={22} height={22} />
+        </button>
+        <button type="button" aria-label={tr.spreadsheet.alignCenter} className={btn} onClick={() => apply({ 'text-align': 'center' })}>
+          <AlignCenterIcon width={22} height={22} />
+        </button>
+        <button type="button" aria-label={tr.spreadsheet.alignRight} className={btn} onClick={() => apply({ 'text-align': 'right' })}>
+          <AlignRightIcon width={22} height={22} />
+        </button>
+      </div>
+
+      <div className={row} role="group" aria-label={tr.spreadsheet.fillColor}>
+        {FILLS.map((color) => (
+          <button
+            key={color || 'none'}
+            type="button"
+            aria-label={`${tr.spreadsheet.fillColor} ${color || tr.spreadsheet.formatGeneral}`}
+            onClick={() => apply({ 'background-color': color })}
+            className="h-9 w-9 rounded-btn border border-line"
+            style={{ backgroundColor: color || 'transparent' }}
+          />
+        ))}
+      </div>
+
+      <label className="block text-sm text-navy">
+        {tr.spreadsheet.numberFormat}
+        <select
+          className="mt-1 w-full rounded-btn border border-line bg-surface px-3 py-2 text-sm text-navy"
+          defaultValue="general"
+          onChange={(e) => {
+            const v = e.target.value;
+            if (v === 'general') apply({});
+            else if (v === 'number') gridRef.current?.setNumberFormat?.(0);
+            else gridRef.current?.setNumberFormat?.(Number(v));
+          }}
+        >
+          <option value="general">{tr.spreadsheet.formatGeneral}</option>
+          <option value="number">{tr.spreadsheet.formatNumber}</option>
+          <option value="0">{tr.spreadsheet.formatZeroDecimals}</option>
+          <option value="1">{tr.spreadsheet.formatOneDecimal}</option>
+          <option value="2">{tr.spreadsheet.formatTwoDecimals}</option>
+        </select>
+      </label>
+
+      <button
+        type="button"
+        onClick={onClose}
+        className="w-full rounded-btn border border-line py-3 text-sm font-medium text-navy"
+      >
+        {tr.common.done}
       </button>
     </div>
   );
