@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import AddRecord from './AddRecord';
 import { db } from '../db/schema';
@@ -61,7 +61,27 @@ describe('AddRecord page', () => {
     expect(screen.getByLabelText('Format cells')).toBeTruthy();
     expect(screen.getByLabelText('Insert')).toBeTruthy();
     expect(screen.getByLabelText('Delete')).toBeTruthy();
+    expect(screen.getByLabelText('Search')).toBeTruthy();
+    expect(screen.getByLabelText('More options')).toBeTruthy();
     expect(screen.getByText('11A - I')).toBeTruthy();
+    expect(consoleErrors).toEqual([]);
+  });
+
+  it('opens the search sheet from the icon row', async () => {
+    const cls = await createClass({
+      name: '11A',
+      academicYear: '2018 EC',
+      schoolName: 'S',
+      teacherName: 'T'
+    });
+    setSelectedClassId(cls.id);
+
+    render(<AddRecord onOpenMenu={() => {}} />);
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Sheet1' })).toBeTruthy());
+
+    fireEvent.click(screen.getByLabelText('Search'));
+    expect(screen.getByLabelText('Search in sheet')).toBeTruthy();
+    expect(screen.getByText('Next match')).toBeTruthy();
     expect(consoleErrors).toEqual([]);
   });
 

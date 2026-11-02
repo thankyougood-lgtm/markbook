@@ -153,6 +153,34 @@ export default function SpreadsheetGrid({
               w.paste(x, y, text);
             },
             mergeSelection: () => ws()?.setMerge(),
+            search: (query) => {
+              const w = ws();
+              if (!w || !query) return false;
+              w.search(query);
+              const rows = w.getSelectedRows();
+              return rows.length > 0;
+            },
+            resetSearch: () => ws()?.resetSearch(),
+            freezeFirstRow: () => {
+              const table = host.querySelector('table.jss_worksheet');
+              const firstBodyRow = table?.querySelector('tbody > tr');
+              const header = table?.querySelector('thead');
+              if (!firstBodyRow || !header) return;
+              header.setAttribute('data-frozen', 'true');
+              firstBodyRow.classList.toggle('frozen-row');
+            },
+            setColumnWidth: (width) => {
+              const w = ws();
+              if (!w) return;
+              const [x1, , x2] = w.getSelection();
+              for (let x = x1; x <= x2; x += 1) w.setWidth(x, width);
+            },
+            setRowHeight: (height) => {
+              const w = ws();
+              if (!w) return;
+              const [, y1, , y2] = w.getSelection();
+              for (let y = y1; y <= y2; y += 1) w.setHeight(y, height);
+            },
             applyStyle: (style) => {
               const w = ws();
               if (!w) return;

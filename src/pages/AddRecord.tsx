@@ -113,7 +113,11 @@ export default function AddRecord({
   const [classSheetOpen, setClassSheetOpen] = useState(false);
   const [newSheetOpen, setNewSheetOpen] = useState(false);
   const [creatingClass, setCreatingClass] = useState(false);
-  const [panel, setPanel] = useState<'insert' | 'delete' | 'format' | null>(null);
+  const [panel, setPanel] = useState<'insert' | 'delete' | 'format' | 'search' | 'more' | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchMissed, setSearchMissed] = useState(false);
+  const [colWidthDraft, setColWidthDraft] = useState('88');
+  const [rowHeightDraft, setRowHeightDraft] = useState('34');
   const [sheetMenuOpen, setSheetMenuOpen] = useState(false);
   const [renaming, setRenaming] = useState(false);
   const [sheetNameDraft, setSheetNameDraft] = useState('');
@@ -195,10 +199,10 @@ export default function AddRecord({
         <button type="button" aria-label={tr.spreadsheet.format} className={iconButton}>
           <FormatIcon width={22} height={22} />
         </button>
-        <button type="button" aria-label={tr.spreadsheet.search} className={iconButton}>
+        <button type="button" aria-label={tr.spreadsheet.search} className={iconButton} onClick={() => setPanel('search')}>
           <SearchIcon width={22} height={22} />
         </button>
-        <button type="button" aria-label={tr.spreadsheet.more} className={iconButton}>
+        <button type="button" aria-label={tr.spreadsheet.moreOptions} className={iconButton} onClick={() => setPanel('more')}>
           <MoreIcon width={22} height={22} />
         </button>
       </div>
@@ -418,6 +422,86 @@ export default function AddRecord({
               </button>
             </div>
           )}
+        </Sheet>
+      )}
+
+      {panel === 'search' && (
+        <Sheet title={tr.spreadsheet.searchInSheet} onClose={() => setPanel(null)}>
+          <div className="space-y-3">
+            <input
+              className="w-full rounded-btn border border-line bg-surface px-3 py-2 text-sm text-navy"
+              placeholder={tr.spreadsheet.searchPlaceholder}
+              aria-label={tr.spreadsheet.searchPlaceholder}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              autoFocus
+            />
+            {searchMissed && <p className="text-sm text-danger">{tr.spreadsheet.searchNoMatches}</p>}
+            <button
+              type="button"
+              className="w-full rounded-btn bg-accent py-3 text-sm font-semibold text-surface"
+              onClick={() => {
+                const query = searchQuery.trim();
+                if (!query) return;
+                const found = wb.gridRef.current?.search?.(query) ?? false;
+                setSearchMissed(!found);
+              }}
+            >
+              {tr.spreadsheet.searchNext}
+            </button>
+          </div>
+        </Sheet>
+      )}
+
+      {panel === 'more' && (
+        <Sheet title={tr.spreadsheet.moreOptions} onClose={() => setPanel(null)}>
+          <div className="space-y-3">
+            <button
+              type="button"
+              className="w-full rounded-btn border border-line py-3 text-sm font-medium text-navy"
+              onClick={() => wb.gridRef.current?.freezeFirstRow?.()}
+            >
+              {tr.spreadsheet.freezeHeaderRow}
+            </button>
+            <label className="block text-sm text-navy">
+              {tr.spreadsheet.columnWidth}
+              <div className="mt-1 flex gap-2">
+                <input
+                  type="number"
+                  min={30}
+                  className="min-w-0 flex-1 rounded-btn border border-line bg-surface px-3 py-2 text-sm text-navy"
+                  value={colWidthDraft}
+                  onChange={(e) => setColWidthDraft(e.target.value)}
+                />
+                <button
+                  type="button"
+                  className="rounded-btn bg-accent px-4 text-sm font-semibold text-surface"
+                  onClick={() => wb.gridRef.current?.setColumnWidth?.(Number(colWidthDraft) || 88)}
+                >
+                  {tr.spreadsheet.apply}
+                </button>
+              </div>
+            </label>
+            <label className="block text-sm text-navy">
+              {tr.spreadsheet.rowHeight}
+              <div className="mt-1 flex gap-2">
+                <input
+                  type="number"
+                  min={16}
+                  className="min-w-0 flex-1 rounded-btn border border-line bg-surface px-3 py-2 text-sm text-navy"
+                  value={rowHeightDraft}
+                  onChange={(e) => setRowHeightDraft(e.target.value)}
+                />
+                <button
+                  type="button"
+                  className="rounded-btn bg-accent px-4 text-sm font-semibold text-surface"
+                  onClick={() => wb.gridRef.current?.setRowHeight?.(Number(rowHeightDraft) || 34)}
+                >
+                  {tr.spreadsheet.apply}
+                </button>
+              </div>
+            </label>
+          </div>
         </Sheet>
       )}
 

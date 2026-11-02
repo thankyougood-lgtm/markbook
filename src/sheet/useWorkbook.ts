@@ -48,6 +48,11 @@ export interface GridApi {
   pasteFromClipboard?: () => Promise<void>;
   applyStyle?: (style: Record<string, string>) => void;
   mergeSelection?: () => void;
+  search?: (query: string) => boolean;
+  resetSearch?: () => void;
+  freezeFirstRow?: () => void;
+  setColumnWidth?: (width: number) => void;
+  setRowHeight?: (height: number) => void;
 }
 
 const SAVE_DELAY_MS = 300;
