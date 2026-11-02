@@ -20,6 +20,8 @@
   --danger: #e0482f;
   --success: #1f9d55;
 
+  --sheet-accent: var(--accent);
+
   --radius-card: 24px;
   --radius-pill: 999px;
   --radius-btn: 16px;
