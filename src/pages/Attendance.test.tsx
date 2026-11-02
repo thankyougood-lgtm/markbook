@@ -44,7 +44,7 @@ describe('Attendance page', () => {
     render(<Attendance onOpenMenu={() => {}} />);
 
     await waitFor(() => expect(grids.length).toBeGreaterThan(0));
-    const data = grids.at(-1)!.data;
+    const data = grids[grids.length - 1]!.data;
     expect(data[0]?.slice(0, 5)).toEqual(['NO', 'Students name', 'Sex', 'Age', 'Semester']);
     expect(data[1]?.slice(0, 5)).toEqual(['1', 'Abebe', 'M', '16', 'I']);
     expect(data[2]?.slice(0, 5)).toEqual(['2', 'Sara', 'F', '15', 'I']);
@@ -62,21 +62,21 @@ describe('Attendance page', () => {
     await waitFor(() => expect(grids.length).toBeGreaterThan(0));
 
     // Present is column 5, absent column 6; the first student is sheet row 1.
-    grids.at(-1)!.onCellTap?.(5, 1);
-    await waitFor(() => expect(grids.at(-1)!.data[1]?.[5]).toBe('\u2713'));
+    grids[grids.length - 1]!.onCellTap?.(5, 1);
+    await waitFor(() => expect(grids[grids.length - 1]!.data[1]?.[5]).toBe('\u2713'));
 
-    grids.at(-1)!.onCellTap?.(6, 1);
+    grids[grids.length - 1]!.onCellTap?.(6, 1);
     await waitFor(() => {
-      const row = grids.at(-1)!.data[1] as string[];
+      const row = grids[grids.length - 1]!.data[1] as string[];
       expect(row[5]).toBe('');
       expect(row[6]).toBe('\u2713');
     });
 
-    grids.at(-1)!.onCellTap?.(6, 1);
-    await waitFor(() => expect(grids.at(-1)!.data[1]?.[6]).toBe(''));
+    grids[grids.length - 1]!.onCellTap?.(6, 1);
+    await waitFor(() => expect(grids[grids.length - 1]!.data[1]?.[6]).toBe(''));
 
     fireEvent.click(screen.getByText('Mark all present'));
-    await waitFor(() => expect(grids.at(-1)!.data[1]?.[5]).toBe('\u2713'));
+    await waitFor(() => expect(grids[grids.length - 1]!.data[1]?.[5]).toBe('\u2713'));
     expect(consoleErrors).toEqual([]);
   });
 
