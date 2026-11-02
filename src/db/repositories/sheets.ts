@@ -106,7 +106,16 @@ export async function saveSheetData(
   sheetId: number,
   data: unknown,
   rowCount: number,
-  colCount: number
+  colCount: number,
+  meta?: SheetDataRow['meta']
 ): Promise<void> {
-  await db.sheetData.put({ sheetId, data, rowCount, colCount, updatedAt: Date.now() });
+  const existing = await db.sheetData.get(sheetId);
+  await db.sheetData.put({
+    sheetId,
+    data,
+    rowCount,
+    colCount,
+    updatedAt: Date.now(),
+    meta: meta ?? existing?.meta
+  });
 }

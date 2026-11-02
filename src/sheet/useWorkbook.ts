@@ -13,6 +13,8 @@ import {
 } from '../db/repositories/sheets';
 import { getSelectedClassId, getSelectedSemester } from '../state/selection';
 import type { CellValue } from './SpreadsheetGrid';
+import { detectRosterColumns, syncRoster } from './rosterSync';
+import type { SheetMeta } from '../db/schema';
 
 export type SaveState = 'saved' | 'saving' | 'unsaved' | 'error';
 
@@ -71,6 +73,7 @@ export function useWorkbook() {
   const [saveState, setSaveState] = useState<SaveState>('saved');
 
   const gridRef = useRef<GridApi | null>(null);
+  const activeSheetMeta = useRef<SheetMeta | undefined>(undefined);
   const activeSheetRef = useRef<SheetRow | null>(null);
   activeSheetRef.current = activeSheet;
   const timerRef = useRef<number | null>(null);
@@ -88,7 +91,24 @@ export function useWorkbook() {
       const values = grid.getData();
       const rowCount = Math.max(values.length, 1);
       const colCount = Math.max(values.reduce((max, row) => Math.max(max, row.length), 0), 1);
-      await saveSheetData(sheet.id, values, rowCount, colCount);
+      let meta = activeSheetMeta.current;
+      // The sheet marked as the student list feeds the students table: detect the
+      // roster columns from row 1 and reconcile rows by their hidden row keys.
+      if (sheet.isStudentList) {
+        const columns = detectRosterColumns(values[0] as unknown[]);
+        if (columns) {
+          const synced = await syncRoster({
+            classId: sheet.classId,
+            semester: sheet.semester,
+            values,
+            columns,
+            rowKeys: meta?.rowKeys ?? {}
+          });
+          meta = { ...meta, columns, rowKeys: synced.rowKeys };
+          activeSheetMeta.current = meta;
+        }
+      }
+      await saveSheetData(sheet.id, values, rowCount, colCount, meta);
       setSaveState('saved');
     } catch {
       setSaveState('error');
@@ -105,6 +125,7 @@ export function useWorkbook() {
     setLoading(true);
     setActiveSheet(sheet);
     const stored = await loadSheetData(sheet.id);
+    activeSheetMeta.current = stored?.meta;
     setData((stored?.data as CellValue[][] | null) ?? null);
     setDimensions({
       rowCount: stored?.rowCount ?? 100,

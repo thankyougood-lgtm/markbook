@@ -85,12 +85,20 @@ export interface SheetRow {
 
 // One record per sheet: the whole grid from the spreadsheet library plus its
 // dimensions, so a big sheet saves in a single write.
+export interface SheetMeta {
+  /** Roster column indexes, detected from the header row. */
+  columns?: { no: number | null; name: number | null; sex: number | null; age: number | null };
+  /** Stable hidden key per sheet row index, used to match students. */
+  rowKeys?: Record<string, string>;
+}
+
 export interface SheetDataRow {
   sheetId: number;
   data: unknown;
   rowCount: number;
   colCount: number;
   updatedAt: number;
+  meta?: SheetMeta;
 }
 
 export class MarkBookDB extends Dexie {
