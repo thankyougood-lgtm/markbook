@@ -202,25 +202,7 @@ export default function AddRecordPage() {
     startEdit(rowIdx, colIdx);
   };
 
-  if (classId === null) {
-    return (
-      <div className='px-4 pt-6'>
-        <section className='rounded-card bg-surface p-6 text-center shadow-soft'>
-          <p className='text-sm text-navy'>{tr.record.emptyNoClass}</p>
-          <button
-            type='button'
-            onClick={() => {
-              window.location.hash = '/';
-            }}
-            className='mt-4 rounded-btn bg-accent px-5 py-2.5 text-sm font-semibold text-surface'
-          >
-            {tr.record.goHome}
-          </button>
-        </section>
-      </div>
-    );
-  }
-
+  const noClass = classId === null;
   const currentClass = classes.find((c) => c.id === classId);
   const title = `${currentClass?.name ?? ''} - ${tr.record.semesterLabel} ${semester === 1 ? 'I' : 'II'}`;
 
@@ -244,10 +226,11 @@ export default function AddRecordPage() {
       <div className='mt-2 flex items-center gap-2 overflow-x-auto px-3'>
         <select
           aria-label={tr.home.selectClass}
-          value={classId}
-          onChange={(e) => chooseClass(Number(e.target.value))}
+          value={classId ?? ''}
+          onChange={(e) => chooseClass(e.target.value === '' ? null : Number(e.target.value))}
           className={selectClass}
         >
+          <option value=''>{tr.home.selectClass}</option>
           {classes.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
@@ -280,7 +263,22 @@ export default function AddRecordPage() {
         </button>
       </div>
 
-      {editing && (
+      {noClass && (
+        <section className='mx-3 mt-4 rounded-card bg-surface p-6 text-center shadow-soft'>
+          <p className='text-sm text-navy'>{tr.record.emptyNoClass}</p>
+          <button
+            type='button'
+            onClick={() => {
+              window.location.hash = '/';
+            }}
+            className='mt-4 rounded-btn bg-accent px-5 py-2.5 text-sm font-semibold text-surface'
+          >
+            {tr.record.goHome}
+          </button>
+        </section>
+      )}
+
+      {!noClass && editing && (
         <div className='mt-2 flex items-center justify-end gap-2 px-3'>
           {cellError && <span className='mr-auto text-xs text-danger'>{tr.record[cellError]}</span>}
           <button
@@ -308,6 +306,7 @@ export default function AddRecordPage() {
         </div>
       )}
 
+      {!noClass && (
       <div className='mx-2 mt-2 min-h-0 flex-1 overflow-auto rounded-btn border border-line bg-surface'>
         <table className='border-collapse text-[14px]'>
           <thead>
@@ -443,8 +442,9 @@ export default function AddRecordPage() {
           </tbody>
         </table>
       </div>
+      )}
 
-      {students.length === 0 && (
+      {!noClass && students.length === 0 && (
         <p className='px-4 py-2 text-center text-xs text-muted'>
           {tr.record.emptyNoStudents} - {tr.record.addStudent}
         </p>

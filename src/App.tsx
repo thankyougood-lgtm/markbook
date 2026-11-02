@@ -4,6 +4,7 @@ import HamburgerButton from './components/HamburgerButton';
 import MenuSheet from './components/MenuSheet';
 import Home from './pages/Home';
 import AddRecord from './pages/AddRecord';
+import ErrorBoundary from './components/ErrorBoundary';
 import { Analytics, Attendance, Settings } from './pages/Others';
 
 export type Route = 'home' | 'add-record' | 'attendance' | 'analytics' | 'settings';
@@ -38,7 +39,11 @@ export default function App() {
 
       <main>
         {route === 'home' && <Home />}
-        {route === 'add-record' && <AddRecord />}
+        {route === 'add-record' && (
+          <ErrorBoundary>
+            <AddRecord />
+          </ErrorBoundary>
+        )}
         {route === 'attendance' && <Attendance />}
         {route === 'analytics' && <Analytics />}
         {route === 'settings' && <Settings />}
