@@ -14,6 +14,7 @@ import {
 import { getSelectedClassId, getSelectedSemester } from '../state/selection';
 import type { CellValue } from './SpreadsheetGrid';
 import { detectRosterColumns, syncRoster } from './rosterSync';
+import { ROSTER_HEADERS } from '../db/repositories/sheets';
 import type { SheetMeta } from '../db/schema';
 
 export type SaveState = 'saved' | 'saving' | 'unsaved' | 'error';
@@ -71,6 +72,8 @@ export function useWorkbook() {
   const [data, setData] = useState<CellValue[][] | null>(null);
   const [dimensions, setDimensions] = useState({ rowCount: 100, colCount: 26 });
   const [loading, setLoading] = useState(true);
+  /** True when the open sheet is the student list but row 1 has no roster header. */
+  const [rosterHeaderMissing, setRosterHeaderMissing] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>('saved');
 
   const gridRef = useRef<GridApi | null>(null);
@@ -97,6 +100,7 @@ export function useWorkbook() {
       // roster columns from row 1 and reconcile rows by their hidden row keys.
       if (sheet.isStudentList) {
         const columns = detectRosterColumns(values[0] as unknown[]);
+        setRosterHeaderMissing(columns === null);
         if (columns) {
           const synced = await syncRoster({
             classId: sheet.classId,
@@ -197,6 +201,17 @@ export function useWorkbook() {
     [classRow, semester, openSheet]
   );
 
+  // "Add headers" on the student list: write row 1 and save right away so the
+  // next sync can pick the students up.
+  const writeRosterHeaders = useCallback(async () => {
+    const sheet = activeSheetRef.current;
+    if (!sheet) return;
+    const grid = gridRef.current;
+    ROSTER_HEADERS.forEach((label, index) => grid?.setValue?.(index, 0, label));
+    setRosterHeaderMissing(false);
+    markDirty();
+  }, [markDirty]);
+
   const reloadSheets = useCallback(async () => {
     if (!classRow) return;
     setSheets(await listSheets(classRow.id, semester));
@@ -274,6 +289,8 @@ export function useWorkbook() {
     markDirty,
     flush,
     openSheet,
+    rosterHeaderMissing,
+    writeRosterHeaders,
     addSheet,
     renameActiveSheet,
     duplicateActiveSheet,

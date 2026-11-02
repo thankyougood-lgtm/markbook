@@ -130,7 +130,9 @@ export const en = {
     freezeHeaderRow: 'Freeze header row',
     columnWidth: 'Column width',
     rowHeight: 'Row height',
-    apply: 'Apply'
+    apply: 'Apply',
+    headerMissingBanner: 'Add headers NO, Students name, Sex, Age in row 1 so students sync to Attendance',
+    addHeaders: 'Add headers'
   }
 };
 

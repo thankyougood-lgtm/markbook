@@ -133,6 +133,8 @@ export const om: Dict = {
     freezeHeaderRow: 'Tarree mata-duree qabsiisi',
     columnWidth: 'Ballina utubaa',
     rowHeight: 'Dherina tarree',
-    apply: 'Hojiirra oolchi'
+    apply: 'Hojiirra oolchi',
+    headerMissingBanner: 'Barattoonni Hordoffii waliin akka walsan tarree 1 keessatti mata-duree NO, Students name, Sex, Age dabali',
+    addHeaders: 'Mata-duree dabali'
   }
 };

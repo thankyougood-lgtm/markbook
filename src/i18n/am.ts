@@ -133,6 +133,8 @@ export const am: Dict = {
     freezeHeaderRow: 'የራስጌ ረድፍ አስቀምጥ',
     columnWidth: 'የአምድ ስፋት',
     rowHeight: 'የረድፍ ቁመት',
-    apply: 'ተግብር'
+    apply: 'ተግብር',
+    headerMissingBanner: 'ተማሪዎች ከክትትል ጋር እንዲመሳሰሉ በረድፍ 1 ራስጌዎችን NO, Students name, Sex, Age ያክሉ',
+    addHeaders: 'ራስጌዎችን ጨምር'
   }
 };

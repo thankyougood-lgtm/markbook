@@ -207,6 +207,19 @@ export default function AddRecord({
         </button>
       </div>
 
+      {wb.rosterHeaderMissing && (
+        <div className="mx-3 mt-2 flex flex-col gap-2 rounded-card border border-line bg-surface p-3 text-xs text-navy shadow-soft sm:flex-row sm:items-center">
+          <p className="min-w-0 flex-1">{tr.spreadsheet.headerMissingBanner}</p>
+          <button
+            type="button"
+            onClick={() => void wb.writeRosterHeaders()}
+            className="shrink-0 rounded-btn bg-accent px-3 py-2 font-semibold text-surface"
+          >
+            {tr.spreadsheet.addHeaders}
+          </button>
+        </div>
+      )}
+
       <div className="mt-1 min-h-0 flex-1 border-t border-line bg-surface">
         {!wb.classRow ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
