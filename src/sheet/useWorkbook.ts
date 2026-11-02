@@ -8,12 +8,11 @@ import {
   listSheets,
   loadSheetData,
   renameSheet,
-  saveSheetData,
   setStudentList
 } from '../db/repositories/sheets';
 import { getSelectedClassId, getSelectedSemester } from '../state/selection';
 import type { CellValue } from './SpreadsheetGrid';
-import { detectRosterColumns, syncRoster } from './rosterSync';
+import { detectRosterColumns, persistSheet } from './rosterSync';
 import { ROSTER_HEADERS } from '../db/repositories/sheets';
 import type { SheetMeta } from '../db/schema';
 
@@ -93,37 +92,17 @@ export function useWorkbook() {
     setSaveState('saving');
     try {
       const values = grid.getData();
-      const rowCount = Math.max(values.length, 1);
-      const colCount = Math.max(values.reduce((max, row) => Math.max(max, row.length), 0), 1);
-      let meta = activeSheetMeta.current;
-      // The sheet marked as the student list feeds the students table: detect the
-      // roster columns from row 1 and reconcile rows by their hidden row keys.
       if (sheet.isStudentList) {
-        const columns = detectRosterColumns(values[0] as unknown[]);
-        setRosterHeaderMissing(columns === null);
-        if (columns) {
-          const synced = await syncRoster({
-            classId: sheet.classId,
-            semester: sheet.semester,
-            values,
-            columns,
-            rowKeys: meta?.rowKeys ?? {}
-          });
-          meta = { ...meta, columns, rowKeys: synced.rowKeys };
-          activeSheetMeta.current = meta;
-          // Paint the age cells the sync rejected. The cell text is untouched.
-          if (columns.age !== null) {
-            grid.markInvalidCells?.(
-              synced.invalidAgeRows.map((rowIndex) => ({
-                x: columns.age as number,
-                y: rowIndex,
-                message: 'Age must be 5 to 30'
-              }))
-            );
-          }
-        }
+        setRosterHeaderMissing(detectRosterColumns(values[0] as unknown[]) === null);
       }
-      await saveSheetData(sheet.id, values, rowCount, colCount, meta);
+      // One tested function owns the roster sync plus the single sheet write.
+      const meta = await persistSheet({
+        sheet,
+        values,
+        meta: activeSheetMeta.current,
+        markInvalid: (cells) => grid.markInvalidCells?.(cells)
+      });
+      activeSheetMeta.current = meta;
       setSaveState('saved');
     } catch {
       setSaveState('error');

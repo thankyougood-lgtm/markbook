@@ -1,6 +1,7 @@
 import { am, en, om } from '../i18n';
 import type { Semester, Sex, StudentRow } from '../db/schema';
 import { db } from '../db/schema';
+import { saveSheetData } from '../db/repositories/sheets';
 
 export interface RosterColumns {
   no: number | null;
@@ -67,6 +68,48 @@ export function parseSerialNo(value: unknown): number | null {
 
 function newRowKey(): string {
   return `r-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+export interface PersistSheetParams {
+  sheet: { id: number; classId: number; semester: Semester; isStudentList?: boolean };
+  values: unknown[][];
+  meta: { columns?: RosterColumns; rowKeys?: Record<string, string> } | undefined;
+  markInvalid: (cells: { x: number; y: number; message: string }[]) => void;
+}
+
+/**
+ * The save path used by the Add Record page: sync the roster when the sheet is
+ * the student list, then persist values plus metadata in one write.
+ */
+export async function persistSheet(params: PersistSheetParams) {
+  const { sheet, values, markInvalid } = params;
+  let meta = params.meta;
+  if (sheet.isStudentList) {
+    const columns = detectRosterColumns(values[0]);
+    if (columns) {
+      const synced = await syncRoster({
+        classId: sheet.classId,
+        semester: sheet.semester,
+        values,
+        columns,
+        rowKeys: meta?.rowKeys ?? {}
+      });
+      meta = { ...meta, columns, rowKeys: synced.rowKeys };
+      if (columns.age !== null) {
+        markInvalid(
+          synced.invalidAgeRows.map((rowIndex) => ({
+            x: columns.age as number,
+            y: rowIndex,
+            message: 'Age must be 5 to 30'
+          }))
+        );
+      }
+    }
+  }
+  const rowCount = Math.max(values.length, 1);
+  const colCount = Math.max(values.reduce((max, row) => Math.max(max, row.length), 0), 1);
+  await saveSheetData(sheet.id, values, rowCount, colCount, meta);
+  return meta;
 }
 
 /**
