@@ -327,7 +327,7 @@ export default function Attendance({ onOpenMenu }: { onOpenMenu: () => void }) {
           </div>
         ) : (
           <SpreadsheetGrid
-            sheetKey={`${classRow.id}-${date}-${period}-${subjectName}`}
+            sheetKey={classRow.id}
             data={gridData}
             rowCount={gridData.length}
             colCount={10}
