@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import HamburgerButton from '../components/HamburgerButton';
 import Sheet from '../components/Sheet';
 import ClassForm from '../components/ClassForm';
@@ -40,7 +40,7 @@ export default function AddRecord({
   const [selection, setSelection] = useState<GridSelection | null>(null);
   const [cellValue, setCellValue] = useState<CellValue>(null);
   const [editing, setEditing] = useState(false);
-  const [numberMode, setNumberMode] = useState(false);
+
   const [keyboardOffset, setKeyboardOffset] = useState(0);
 
   // Hide the bottom nav while editing, and lift the editing chrome above the
@@ -83,6 +83,29 @@ export default function AddRecord({
     wb.gridRef.current?.cancelEdit?.();
     setEditing(false);
   };
+  const confirmEditRef = useRef(confirmEdit);
+  confirmEditRef.current = confirmEdit;
+  const cancelEditRef = useRef(cancelEdit);
+  cancelEditRef.current = cancelEdit;
+
+  // Enter and Escape are handled here, in the capture phase, so they go through
+  // the same closeEditor path as the on-screen X and check buttons.
+  useEffect(() => {
+    if (!editing) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        confirmEditRef.current();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        cancelEditRef.current();
+      }
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [editing]);
   const [classSheetOpen, setClassSheetOpen] = useState(false);
   const [newSheetOpen, setNewSheetOpen] = useState(false);
   const [creatingClass, setCreatingClass] = useState(false);
@@ -229,12 +252,7 @@ export default function AddRecord({
 
       {wb.classRow && wb.activeSheet && editing && (
         <div className="px-2" style={{ marginBottom: keyboardOffset }}>
-          <KeyboardPill
-            tr={tr}
-            gridRef={wb.gridRef}
-            numberMode={numberMode}
-            onToggleKeyboard={() => setNumberMode((n) => !n)}
-          />
+          <KeyboardPill tr={tr} gridRef={wb.gridRef} />
         </div>
       )}
 

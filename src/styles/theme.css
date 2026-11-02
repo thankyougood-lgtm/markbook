@@ -170,10 +170,29 @@
 }
 
 /*
- * Selection handle. The library draws one square corner marker at the bottom
+ * Selection handles. The library draws one square corner marker at the bottom
  * right of the range; the reference wants a small white circle ringed in
- * --sheet-accent. It is offset so the ring sits on the cell corner.
+ * --sheet-accent. The top-left handle is drawn here as a pseudo-element on the
+ * top-left cell of the range.
  */
+.sheet-grid .jss_worksheet td.highlight-top.highlight-left {
+  position: relative;
+}
+
+.sheet-grid .jss_worksheet td.highlight-top.highlight-left::after {
+  content: '';
+  position: absolute;
+  top: -7px;
+  left: -7px;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--sheet-accent);
+  border-radius: 50%;
+  background-color: var(--surface);
+  box-shadow: var(--shadow-soft);
+  pointer-events: none;
+}
+
 .sheet-grid .jss_corner {
   width: 14px !important;
   height: 14px !important;

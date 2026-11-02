@@ -56,8 +56,6 @@ describe('AddRecord page', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Sheet1' })).toBeTruthy());
     expect(screen.getByTestId('grid')).toBeTruthy();
     expect(screen.getByLabelText('Cell content')).toBeTruthy();
-    expect(screen.getByLabelText('Copy')).toBeTruthy();
-    expect(screen.getByLabelText('Merge cells')).toBeTruthy();
     expect(screen.getByText('11A - I')).toBeTruthy();
     expect(consoleErrors).toEqual([]);
   });

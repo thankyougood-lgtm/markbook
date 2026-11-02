@@ -2,6 +2,15 @@ import type { MutableRefObject } from 'react';
 import type { Dict } from '../i18n';
 import type { CellValue } from './SpreadsheetGrid';
 import type { GridApi, GridSelection } from './useWorkbook';
+import {
+  ArrowLeftIcon,
+  ArrowRightIcon,
+  CheckIcon,
+  CloseIcon,
+  HideKeyboardIcon,
+  RedoIcon,
+  UndoIcon
+} from '../components/icons';
 
 const pill =
   'flex items-center gap-1 overflow-x-auto rounded-pill bg-surface px-2 py-1 shadow-nav';
@@ -50,38 +59,26 @@ export function SelectionToolbar({
   tr: Dict;
   gridRef: MutableRefObject<GridApi | null>;
 }) {
-  const items: { label: string; glyph: string; run?: () => void }[] = [
-    { label: tr.spreadsheet.copy, glyph: '⧉' },
-    { label: tr.spreadsheet.formatCells, glyph: 'A' },
-    { label: tr.spreadsheet.sort, glyph: '↕' },
-    { label: tr.spreadsheet.insert, glyph: '+' },
-    { label: tr.spreadsheet.filter, glyph: '▽' },
-    { label: tr.spreadsheet.fillColor, glyph: '▨' },
-    { label: tr.spreadsheet.decreaseDecimals, glyph: '.0' },
-    { label: tr.spreadsheet.increaseDecimals, glyph: '.00' },
-    { label: tr.spreadsheet.deleteCells, glyph: '⌫' },
-    { label: tr.spreadsheet.mergeCells, glyph: '⛶' }
-  ];
-
+  // Only actions that actually work are rendered; the rest arrive with the
+  // stage that implements them, so the toolbar never shows a dead button.
   return (
     <div className={pill} role="toolbar" aria-label={tr.spreadsheet.more}>
-      {items.map((item) => (
-        <button
-          key={item.label}
-          type="button"
-          aria-label={item.label}
-          disabled={!item.run}
-          onClick={() => {
-            item.run?.();
-            void gridRef;
-          }}
-          className={pillButton}
-        >
-          <span aria-hidden="true" className="text-sm font-semibold">
-            {item.glyph}
-          </span>
-        </button>
-      ))}
+      <button
+        type="button"
+        aria-label={tr.spreadsheet.undo}
+        className={pillButton}
+        onClick={() => gridRef.current?.undo?.()}
+      >
+        <UndoIcon width={24} height={24} />
+      </button>
+      <button
+        type="button"
+        aria-label={tr.spreadsheet.redo}
+        className={pillButton}
+        onClick={() => gridRef.current?.redo?.()}
+      >
+        <RedoIcon width={24} height={24} />
+      </button>
     </div>
   );
 }
@@ -103,7 +100,7 @@ export function EditButtons({
         onClick={onCancel}
         className="flex h-10 w-10 items-center justify-center rounded-pill bg-danger text-surface shadow-soft"
       >
-        <span aria-hidden="true">✕</span>
+        <CloseIcon width={22} height={22} />
       </button>
       <button
         type="button"
@@ -111,7 +108,7 @@ export function EditButtons({
         onClick={onConfirm}
         className="flex h-10 w-10 items-center justify-center rounded-pill bg-success text-surface shadow-soft"
       >
-        <span aria-hidden="true">✓</span>
+        <CheckIcon width={22} height={22} />
       </button>
     </div>
   );
@@ -119,27 +116,20 @@ export function EditButtons({
 
 export function KeyboardPill({
   tr,
-  gridRef,
-  numberMode,
-  onToggleKeyboard
+  gridRef
 }: {
   tr: Dict;
   gridRef: MutableRefObject<GridApi | null>;
-  numberMode: boolean;
-  onToggleKeyboard: () => void;
 }) {
   return (
     <div className={pill} role="toolbar" aria-label={tr.spreadsheet.more}>
-      <button type="button" aria-label={tr.spreadsheet.paste} className={pillButton} disabled>
-        <span aria-hidden="true">📋</span>
-      </button>
       <button
         type="button"
         aria-label={tr.spreadsheet.previousCell}
         className={pillButton}
         onClick={() => gridRef.current?.moveSelection?.('left')}
       >
-        <span aria-hidden="true">←</span>
+        <ArrowLeftIcon width={24} height={24} />
       </button>
       <button
         type="button"
@@ -147,19 +137,7 @@ export function KeyboardPill({
         className={pillButton}
         onClick={() => gridRef.current?.moveSelection?.('right')}
       >
-        <span aria-hidden="true">→</span>
-      </button>
-      <button
-        type="button"
-        aria-label={numberMode ? tr.spreadsheet.textKeyboard : tr.spreadsheet.numberKeyboard}
-        aria-pressed={numberMode}
-        className={pillButton}
-        onClick={onToggleKeyboard}
-      >
-        <span aria-hidden="true">123</span>
-      </button>
-      <button type="button" aria-label={tr.spreadsheet.pickDate} className={pillButton} disabled>
-        <span aria-hidden="true">📅</span>
+        <ArrowRightIcon width={24} height={24} />
       </button>
       <button
         type="button"
@@ -167,15 +145,7 @@ export function KeyboardPill({
         className={pillButton}
         onClick={() => gridRef.current?.undo?.()}
       >
-        <span aria-hidden="true">↶</span>
-      </button>
-      <button
-        type="button"
-        aria-label={tr.spreadsheet.more}
-        className={pillButton}
-        onClick={() => gridRef.current?.hideKeyboard?.()}
-      >
-        <span aria-hidden="true">⋯</span>
+        <UndoIcon width={24} height={24} />
       </button>
       <button
         type="button"
@@ -183,7 +153,7 @@ export function KeyboardPill({
         className={pillButton}
         onClick={() => gridRef.current?.hideKeyboard?.()}
       >
-        <span aria-hidden="true">⌨</span>
+        <HideKeyboardIcon width={24} height={24} />
       </button>
     </div>
   );
