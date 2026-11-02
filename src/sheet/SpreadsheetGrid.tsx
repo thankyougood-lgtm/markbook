@@ -55,6 +55,7 @@ export default function SpreadsheetGrid({
             {
               data: (data as jspreadsheet.CellValue[][] | null) ?? undefined,
               minDimensions: [colCount, rowCount],
+              defaultRowHeight: 34,
               tableOverflow: true,
               tableHeight: '100%'
             }

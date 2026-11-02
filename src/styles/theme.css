@@ -21,6 +21,12 @@
   --success: #1f9d55;
 
   --sheet-accent: var(--accent);
+  --sheet-grid-line: #e3e8f2;
+  --sheet-header-bg: #eef1f7;
+  --sheet-header-bg-active: #d9dfea;
+  --sheet-header-text: #5b6478;
+  --sheet-cell-bg: #ffffff;
+  --sheet-cell-text: #101828;
 
   --radius-card: 24px;
   --radius-pill: 999px;
@@ -55,10 +61,115 @@
   --danger: #f06a52;
   --success: #43c17f;
 
+  --sheet-grid-line: #26345e;
+  --sheet-header-bg: #1b2a55;
+  --sheet-header-bg-active: #2b3d6e;
+  --sheet-header-text: #9aa8cc;
+  --sheet-cell-bg: #16224a;
+  --sheet-cell-text: #e8eefc;
+
   --shadow-soft: 0 8px 24px rgba(0, 0, 0, 0.45);
   --shadow-nav: 0 10px 30px rgba(0, 0, 0, 0.5);
 
   color-scheme: dark;
+}
+
+/*
+ * Spreadsheet grid, styled to the reference. The library stylesheet is loaded
+ * lazily with the grid, so every rule below is scoped under .sheet-grid to win
+ * on specificity instead of source order.
+ */
+.sheet-grid .jss_worksheet {
+  background-color: var(--sheet-cell-bg);
+  border: 0;
+}
+
+.sheet-grid .jss_worksheet > thead > tr > td {
+  background-color: var(--sheet-header-bg);
+  border-top: 1px solid var(--sheet-grid-line);
+  border-left: 1px solid var(--sheet-grid-line);
+  border-right: 1px solid var(--sheet-grid-line);
+  color: var(--sheet-header-text);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.sheet-grid .jss_worksheet > thead > tr > td.selected {
+  background-color: var(--sheet-header-bg-active);
+  color: var(--navy);
+}
+
+.sheet-grid .jss_worksheet > tbody > tr > td {
+  background-color: var(--sheet-cell-bg);
+  border-top: 1px solid var(--sheet-grid-line);
+  border-left: 1px solid var(--sheet-grid-line);
+  border-right: 1px solid transparent;
+  border-bottom: 1px solid transparent;
+  color: var(--sheet-cell-text);
+  font-size: 16px;
+  padding: 4px 6px;
+}
+
+.sheet-grid .jss_worksheet > tbody > tr > td:first-child {
+  background-color: var(--sheet-header-bg);
+  color: var(--sheet-header-text);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.sheet-grid .jss_worksheet > tbody > tr.selected > td:first-child {
+  background-color: var(--sheet-header-bg-active);
+  color: var(--navy);
+}
+
+/* The active cell / range: 2 px --sheet-accent border instead of the dotted black. */
+.sheet-grid .jss_worksheet .highlight-top {
+  border-top: 2px solid var(--sheet-accent);
+  box-shadow: none;
+}
+
+.sheet-grid .jss_worksheet .highlight-left {
+  border-left: 2px solid var(--sheet-accent);
+  box-shadow: none;
+}
+
+.sheet-grid .jss_worksheet .highlight-right {
+  border-right: 2px solid var(--sheet-accent);
+}
+
+.sheet-grid .jss_worksheet .highlight-bottom {
+  border-bottom: 2px solid var(--sheet-accent);
+}
+
+.sheet-grid .jss_worksheet .highlight-top.highlight-left {
+  box-shadow: none;
+}
+
+.sheet-grid .jss_worksheet .selection-left {
+  border-left: 1px solid var(--sheet-accent);
+}
+
+.sheet-grid .jss_worksheet .selection-right {
+  border-right: 1px solid var(--sheet-accent);
+}
+
+.sheet-grid .jss_worksheet .selection-top {
+  border-top: 1px solid var(--sheet-accent);
+}
+
+.sheet-grid .jss_worksheet .selection-bottom {
+  border-bottom: 1px solid var(--sheet-accent);
+}
+
+.sheet-grid .jss_worksheet .selection,
+.sheet-grid .jss_worksheet .highlight {
+  background-color: var(--select-highlight);
+}
+
+.sheet-grid .jss_corner {
+  background-color: var(--sheet-header-bg);
 }
 
 @tailwind base;
