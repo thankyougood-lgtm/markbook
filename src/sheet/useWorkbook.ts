@@ -55,6 +55,7 @@ export interface GridApi {
   freezeFirstRow?: () => void;
   setColumnWidth?: (width: number) => void;
   setRowHeight?: (height: number) => void;
+  markInvalidCells?: (cells: { x: number; y: number; message: string }[]) => void;
 }
 
 const SAVE_DELAY_MS = 300;
@@ -106,6 +107,16 @@ export function useWorkbook() {
           });
           meta = { ...meta, columns, rowKeys: synced.rowKeys };
           activeSheetMeta.current = meta;
+          // Paint the age cells the sync rejected. The cell text is untouched.
+          if (columns.age !== null) {
+            grid.markInvalidCells?.(
+              synced.invalidAgeRows.map((rowIndex) => ({
+                x: columns.age as number,
+                y: rowIndex,
+                message: 'Age must be 5 to 30'
+              }))
+            );
+          }
         }
       }
       await saveSheetData(sheet.id, values, rowCount, colCount, meta);

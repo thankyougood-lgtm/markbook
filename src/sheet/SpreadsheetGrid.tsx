@@ -153,6 +153,19 @@ export default function SpreadsheetGrid({
               w.paste(x, y, text);
             },
             mergeSelection: () => ws()?.setMerge(),
+            markInvalidCells: (cells) => {
+              const w = ws();
+              if (!w) return;
+              for (const { x, y, message } of cells) {
+                const name = `${String.fromCharCode(65 + x)}${y + 1}`;
+                w.setStyle(name, 'border', '2px solid var(--danger)', true);
+                const td = w.getCellFromCoords(x, y);
+                if (td) {
+                  td.setAttribute('title', message);
+                  td.setAttribute('data-invalid', 'true');
+                }
+              }
+            },
             search: (query) => {
               const w = ws();
               if (!w || !query) return false;

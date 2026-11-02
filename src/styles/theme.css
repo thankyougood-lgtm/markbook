@@ -170,6 +170,15 @@
 }
 
 /*
+ * Cell the roster sync rejected (for example an age outside 5 to 30). The text
+ * is never changed; the cell is only outlined and carries a title tooltip.
+ */
+.sheet-grid .jss_worksheet > tbody > tr > td[data-invalid='true'] {
+  outline: 2px solid var(--danger);
+  outline-offset: -2px;
+}
+
+/*
  * Frozen header row. "Freeze header row" pins data row 1 below the sticky
  * column-letter thead so it stays visible while the sheet scrolls.
  */
