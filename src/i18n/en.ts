@@ -47,7 +47,9 @@ export const en = {
     statusP: 'P',
     statusA: 'A',
     statusL: 'L',
-    statusE: 'E'
+    statusE: 'E',
+    semester: 'Semester',
+    notRecorded: 'not recorded'
   },
 
   placeholder: {

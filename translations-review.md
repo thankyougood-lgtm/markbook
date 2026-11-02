@@ -8,6 +8,9 @@ speaker before release.
   search, more, newSheet, blankSheet, rosterSheet, addSheet, loadingGrid,
   gridFailed, createClassToStart, noClassTitle, classSheetTitle) — all drafts.
 
+## Attendance spreadsheet (stage 7 rewrite)
+- `attendance.semester` and `attendance.notRecorded` — drafts.
+
 ## Attendance (stage 7)
 - `attendance.*` (title, date, period, subject, subjectPlaceholder, no, studentName,
   sex, status, percent, markAllPresent, present, absent, late, excused, summary,

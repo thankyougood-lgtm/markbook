@@ -8,8 +8,8 @@ type WorksheetInstance = ReturnType<typeof jspreadsheet>[number];
 type CellValue = string | number | boolean | null;
 
 export interface SpreadsheetGridProps {
-  /** Bumped whenever a different sheet should be shown in the same container. */
-  sheetKey: number;
+  /** Changes whenever a different sheet should be shown in the same container. */
+  sheetKey: number | string;
   data: CellValue[][] | null;
   rowCount: number;
   colCount: number;

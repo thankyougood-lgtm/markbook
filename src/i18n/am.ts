@@ -50,7 +50,9 @@ export const am: Dict = {
     statusP: 'P',
     statusA: 'A',
     statusL: 'L',
-    statusE: 'E'
+    statusE: 'E',
+    semester: 'ሴሚስተር',
+    notRecorded: 'አልተመዘገበም'
   },
 
   placeholder: {

@@ -15,18 +15,11 @@ import {
   setRecord
 } from '../db/repositories/attendance';
 import { getSelectedClassId, getSelectedSemester } from '../state/selection';
-import { computePercent, nextStatus } from '../attendance/stats';
+import { computePercent } from '../attendance/stats';
+import SpreadsheetGrid from '../sheet/SpreadsheetGrid';
 
 const SAVE_DELAY_MS = 300;
 const PERIODS = [1, 2, 3, 4, 5, 6, 7, 8];
-
-const statusClass: Record<AttendanceStatus | '', string> = {
-  P: 'bg-accent text-surface',
-  A: 'bg-danger text-surface',
-  L: 'bg-warning text-surface',
-  E: 'bg-header-bg text-muted',
-  '': 'bg-surface text-navy'
-};
 
 function todayIso(): string {
   const d = new Date();
@@ -164,17 +157,6 @@ export default function Attendance({ onOpenMenu }: { onOpenMenu: () => void }) {
     return () => window.removeEventListener('pagehide', onHide);
   }, [flush]);
 
-  const cycle = (studentId: number) => {
-    setStatuses((prev) => {
-      const next = nextStatus(prev[studentId]);
-      const copy = { ...prev };
-      if (next) copy[studentId] = next;
-      else delete copy[studentId];
-      return copy;
-    });
-    markDirty();
-  };
-
   const markAllPresent = () => {
     const next: Record<number, AttendanceStatus> = {};
     for (const s of students) next[s.id] = 'P';
@@ -188,8 +170,66 @@ export default function Attendance({ onOpenMenu }: { onOpenMenu: () => void }) {
       const status = statuses[student.id];
       if (status) counts[status] += 1;
     }
-    return counts;
+    return { ...counts, unrecorded: students.length - counts.P - counts.A - counts.L - counts.E };
   }, [statuses, students]);
+
+  const headers = useMemo(
+    () => [
+      tr.no,
+      tr.studentName,
+      tr.sex,
+      t().sheet.age,
+      tr.semester,
+      tr.present,
+      tr.absent,
+      tr.late,
+      tr.excused,
+      tr.percent
+    ],
+    [tr]
+  );
+
+  // Column layout of the sheet, in the order the prompt fixes.
+  const col = { no: 0, name: 1, sex: 2, age: 3, semester: 4, present: 5, absent: 6, late: 7, excused: 8, percent: 9 };
+  const readOnlyColumns = [col.no, col.name, col.sex, col.age, col.semester, col.percent];
+
+  // The grid is the source of truth for what is on screen; tapping a tick column
+  // only changes the status, the sheet is rebuilt from `statuses`.
+  const gridData = useMemo(() => {
+    const rows = students.map((student) => {
+      const status = statuses[student.id];
+      const tick = (target: AttendanceStatus) => (status === target ? '\u2713' : '');
+      const pct = percentages[student.id];
+      return [
+        String(student.serialNo),
+        student.fullName,
+        student.sex ?? '',
+        student.age === null || student.age === undefined ? '' : String(student.age),
+        semester === 1 ? 'I' : 'II',
+        tick('P'),
+        tick('A'),
+        tick('L'),
+        tick('E'),
+        pct === null || pct === undefined ? '-' : `${pct}%`
+      ];
+    });
+    return [headers, ...rows];
+  }, [students, statuses, percentages, semester, headers]);
+
+  const tapCell = (x: number, y: number) => {
+    if (y === 0) return;
+    const student = students[y - 1];
+    if (!student) return;
+    const next = x === col.present ? 'P' : x === col.absent ? 'A' : x === col.late ? 'L' : x === col.excused ? 'E' : null;
+    if (!next) return;
+    setStatuses((prev) => {
+      const copy = { ...prev };
+      if (copy[student.id] === next) delete copy[student.id];
+      else copy[student.id] = next;
+      return copy;
+    });
+    markDirty();
+  };
 
   const saveLabel =
     saveState === 'saving' ? tr.saving : saveState === 'error' ? tr.saveFailed : tr.saved;
@@ -262,7 +302,7 @@ export default function Attendance({ onOpenMenu }: { onOpenMenu: () => void }) {
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2 px-3 text-xs text-navy">
         <span>
           {tr.summary}: {summary.P} {tr.present}, {summary.A} {tr.absent}, {summary.L} {tr.late},{' '}
-          {summary.E} {tr.excused}
+          {summary.E} {tr.excused}, {summary.unrecorded} {tr.notRecorded}
         </span>
         <button
           type="button"
@@ -286,43 +326,19 @@ export default function Attendance({ onOpenMenu }: { onOpenMenu: () => void }) {
             </a>
           </div>
         ) : (
-          <table className="w-full border-collapse text-sm">
-            <thead className="sticky top-0 z-10 bg-header-bg text-xs text-muted">
-              <tr>
-                <th className="att-no px-2 py-2 text-left font-semibold">{tr.no}</th>
-                <th className="att-name px-2 py-2 text-left font-semibold">{tr.studentName}</th>
-                <th className="px-2 py-2 text-left font-semibold">{tr.sex}</th>
-                <th className="px-2 py-2 text-left font-semibold">{tr.status}</th>
-                <th className="px-2 py-2 text-right font-semibold">{tr.percent}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {students.map((student) => {
-                const status = statuses[student.id] ?? '';
-                const pct = percentages[student.id];
-                return (
-                  <tr key={student.id} className="border-t border-line">
-                    <td className="att-no px-2 py-2 text-muted">{student.serialNo}</td>
-                    <td className="att-name px-2 py-2 font-medium text-navy">{student.fullName}</td>
-                    <td className="px-2 py-2 text-muted">{student.sex ?? ''}</td>
-                    <td className="px-2 py-2">
-                      <button
-                        type="button"
-                        onClick={() => cycle(student.id)}
-                        aria-label={`${tr.status} ${student.fullName}`}
-                        className={`flex h-9 w-12 items-center justify-center rounded-btn border border-line font-semibold ${statusClass[status]}`}
-                      >
-                        {status}
-                      </button>
-                    </td>
-                    <td className="px-2 py-2 text-right text-muted">
-                      {pct === null || pct === undefined ? '-' : `${pct}%`}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <SpreadsheetGrid
+            sheetKey={`${classRow.id}-${date}-${period}-${subjectName}`}
+            data={gridData}
+            rowCount={gridData.length}
+            colCount={10}
+            readOnlyColumns={readOnlyColumns}
+            freezeColumns={2}
+            freezeFirstRow
+            onCellTap={tapCell}
+            onDirty={markDirty}
+            loadingLabel={tr.saving}
+            failedLabel={tr.saveFailed}
+          />
         )}
       </div>
     </div>

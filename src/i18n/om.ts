@@ -50,7 +50,9 @@ export const om: Dict = {
     statusP: 'P',
     statusA: 'A',
     statusL: 'L',
-    statusE: 'E'
+    statusE: 'E',
+    semester: 'Semisteera',
+    notRecorded: 'hin galmeeffamne'
   },
 
   placeholder: {

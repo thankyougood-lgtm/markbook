@@ -7,9 +7,20 @@ import { createClass } from '../db/repositories/classes';
 import { addStudent } from '../db/repositories/students';
 import { setSelectedClassId } from '../state/selection';
 
+// The grid is lazily loaded, so it is replaced with a probe that records the
+// rows handed to it and lets the test simulate taps.
+const grids: { data: unknown[][]; onCellTap?: (x: number, y: number) => void }[] = [];
+vi.mock('../sheet/SpreadsheetGrid', () => ({
+  default: (props: { data: unknown[][]; onCellTap?: (x: number, y: number) => void }) => {
+    grids.push(props);
+    return <div data-testid="grid" />;
+  }
+}));
+
 let consoleErrors: unknown[][] = [];
 
 beforeEach(async () => {
+  grids.length = 0;
   await Promise.all(db.tables.map((table) => table.clear()));
   consoleErrors = [];
   vi.spyOn(console, 'error').mockImplementation((...args) => {
@@ -32,8 +43,12 @@ describe('Attendance page', () => {
 
     render(<Attendance onOpenMenu={() => {}} />);
 
-    await waitFor(() => expect(screen.getByText('Abebe')).toBeTruthy());
-    expect(screen.getByText('Sara')).toBeTruthy();
+    await waitFor(() => expect(grids.length).toBeGreaterThan(0));
+    const data = grids.at(-1)!.data;
+    expect(data[0]?.slice(0, 5)).toEqual(['NO', 'Students name', 'Sex', 'Age', 'Semester']);
+    expect(data[1]?.slice(0, 5)).toEqual(['1', 'Abebe', 'M', '16', 'I']);
+    expect(data[2]?.slice(0, 5)).toEqual(['2', 'Sara', 'F', '15', 'I']);
+    expect(data[1]?.[9]).toBe('-');
     expect(screen.getByText('Mark all present')).toBeTruthy();
     expect(consoleErrors).toEqual([]);
   });
@@ -44,13 +59,24 @@ describe('Attendance page', () => {
     await addStudent(cls.id, { fullName: 'Abebe', sex: 'M', age: 16 });
 
     render(<Attendance onOpenMenu={() => {}} />);
-    const cell = await screen.findByLabelText('Status Abebe');
+    await waitFor(() => expect(grids.length).toBeGreaterThan(0));
 
-    fireEvent.click(cell);
-    await waitFor(() => expect(cell.textContent).toBe('P'));
+    // Present is column 5, absent column 6; the first student is sheet row 1.
+    grids.at(-1)!.onCellTap?.(5, 1);
+    await waitFor(() => expect(grids.at(-1)!.data[1]?.[5]).toBe('\u2713'));
+
+    grids.at(-1)!.onCellTap?.(6, 1);
+    await waitFor(() => {
+      const row = grids.at(-1)!.data[1] as string[];
+      expect(row[5]).toBe('');
+      expect(row[6]).toBe('\u2713');
+    });
+
+    grids.at(-1)!.onCellTap?.(6, 1);
+    await waitFor(() => expect(grids.at(-1)!.data[1]?.[6]).toBe(''));
 
     fireEvent.click(screen.getByText('Mark all present'));
-    await waitFor(() => expect(cell.textContent).toBe('P'));
+    await waitFor(() => expect(grids.at(-1)!.data[1]?.[5]).toBe('\u2713'));
     expect(consoleErrors).toEqual([]);
   });
 
