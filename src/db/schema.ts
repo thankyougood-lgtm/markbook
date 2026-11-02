@@ -34,6 +34,7 @@ export interface StudentRow {
   age: number | null;
   order: number;
   archivedAt: number | null;
+  sheetRowKey?: string | null;
 }
 
 export interface StudentSemesterRow {
@@ -90,6 +91,12 @@ export class MarkBookDB extends Dexie {
       attendanceSessions: '++id, classId, date, period, subjectId',
       attendanceRecords: '[sessionId+studentId], status',
       settings: 'key, value'
+    });
+
+    // v2: link students to their row in the student list sheet. v1 is untouched;
+    // existing rows simply have no sheetRowKey until the sheet sync fills it in.
+    this.version(2).stores({
+      students: '++id, classId, serialNo, fullName, sex, age, order, archivedAt, sheetRowKey'
     });
   }
 }
