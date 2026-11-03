@@ -1,0 +1,59 @@
+:root {
+  --bg-page: #f2f6fe;
+  --surface: #ffffff;
+  --surface-alt: #edf3ff;
+  --primary: #2f5be0;
+  --primary-soft: #dfe9ff;
+  --navy: #0b1f5c;
+  --text: #0b1f5c;
+  --muted: #6173a6;
+  --border: #dbe6ff;
+  --shadow: 0 10px 24px rgba(28, 56, 135, 0.12);
+  --danger: #e6494b;
+  --bottom-nav-height: 76px;
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --app-shell-max: 1280px;
+}
+
+html.theme-dark {
+  --bg-page: #0f172a;
+  --surface: #162236;
+  --surface-alt: #1d2d43;
+  --primary: #5b87ff;
+  --primary-soft: #243b6b;
+  --navy: #eaf2ff;
+  --text: #eaf2ff;
+  --muted: #a6b7d9;
+  --border: #2d426d;
+  --shadow: 0 16px 34px rgba(10, 12, 22, 0.4);
+  --danger: #ff7d81;
+}
+
+html {
+  background: var(--bg-page);
+  color: var(--text);
+  font-family: 'Ethiopic Sans', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background: var(--bg-page);
+  color: var(--text);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+button,
+select,
+input {
+  font: inherit;
+}
+
+#root {
+  min-height: 100vh;
+}
