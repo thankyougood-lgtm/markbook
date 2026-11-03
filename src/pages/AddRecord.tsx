@@ -15,6 +15,7 @@ import {
 } from '../components/icons';
 import { t } from '../i18n';
 import type { Semester, SheetTemplate } from '../db/schema';
+import { formatClassDisplayName } from '../db/repositories/classes';
 import { setSelectedClassId, setSelectedSemester } from '../state/selection';
 import SpreadsheetGrid, { type CellValue } from '../sheet/SpreadsheetGrid';
 import { useWorkbook, type GridSelection } from '../sheet/useWorkbook';
@@ -172,7 +173,7 @@ export default function AddRecord({
           <span className="flex max-w-full items-center gap-1 text-sm font-semibold text-navy">
             <span className="truncate">
               {wb.classRow
-                ? `${wb.classRow.name} - ${wb.semester === 1 ? 'I' : 'II'}`
+                ? `${formatClassDisplayName(wb.classRow)} - ${wb.semester === 1 ? 'I' : 'II'}`
                 : tr.spreadsheet.noClassTitle}
             </span>
             <ChevronDownIcon width={16} height={16} className="shrink-0" />
@@ -579,7 +580,7 @@ export default function AddRecord({
                 >
                   {wb.classes.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.name}
+                      {formatClassDisplayName(c)}
                     </option>
                   ))}
                 </select>

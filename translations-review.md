@@ -19,6 +19,9 @@ speaker before release.
 ## Stage 6/7 fixes
 - `spreadsheet.headerMissingBanner`, `spreadsheet.addHeaders` — drafts.
 
+## Class form rewrite
+- `home.duplicateClass` — draft validation text for duplicate grade/section/year classes.
+
 ## Spreadsheet stage 3
 - `spreadsheet.*` (editCell, formulaBar, expandFormula, copy, cut, paste,
   formatCells, sort, insert, filter, fillColor, decreaseDecimals,

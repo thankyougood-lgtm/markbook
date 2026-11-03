@@ -71,13 +71,11 @@ export const am: Dict = {
     newClass: 'አዲስ ክፍል',
     semester: 'ሴሚስተር',
     formTitle: 'አዲስ ክፍል',
-    className: 'የክፍል ስም',
     grade: 'ክፍል ደረጃ',
     section: 'ሴክሽን',
     academicYear: 'የትምህርት ዘመን',
-    schoolName: 'የትምህርት ቤት ስም',
-    teacherName: 'የመምህር ስም',
-    required: 'አስፈላጊ'
+    required: 'አስፈላጊ',
+    duplicateClass: 'ይህ የክፍል ደረጃ፣ ሴክሽን እና የትምህርት ዘመን ያለው ክፍል አስቀድሞ አለ።'
   },
   sheet: {
     no: 'ቁጥር',

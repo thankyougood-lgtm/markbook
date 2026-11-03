@@ -71,13 +71,11 @@ export const om: Dict = {
     newClass: 'Kutaa haaraa',
     semester: 'Semisteera',
     formTitle: 'Kutaa haaraa',
-    className: 'Maqaa kutaa',
     grade: 'Sadarkaa',
     section: 'Kutaalee',
     academicYear: 'Waggaa barnootaa',
-    schoolName: 'Maqaa mana barnootaa',
-    teacherName: 'Maqaa barsiisaa',
-    required: 'Barbaachisa'
+    required: 'Barbaachisa',
+    duplicateClass: 'Kuni sadarkaa, kutaa fi waggaa barnootaa kanaan dura jira.'
   },
   sheet: {
     no: 'Lakkoofsa',

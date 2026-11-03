@@ -41,9 +41,18 @@ describe('sheets repository', () => {
     expect(data?.colCount).toBe(26);
   });
 
-  it('leaves a blank sheet empty', async () => {
+  it('creates a blank first sheet by default', async () => {
     const sheet = await createSheet({ classId: 1, semester: 1 });
+    expect(sheet.template).toBe('blank');
+    expect(sheet.isStudentList).toBe(false);
     expect((await loadSheetData(sheet.id))?.data).toBeNull();
+  });
+
+  it('marks a roster template as the student-list when it is the first roster sheet', async () => {
+    const sheet = await createSheet({ classId: 1, semester: 1, template: 'roster' });
+    expect(sheet.template).toBe('roster');
+    expect(sheet.isStudentList).toBe(true);
+    expect((await loadSheetData(sheet.id))?.data).toEqual([[...ROSTER_HEADERS]]);
   });
 
   it('renames a sheet', async () => {

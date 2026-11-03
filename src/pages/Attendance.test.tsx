@@ -80,13 +80,16 @@ describe('Attendance page', () => {
     expect(consoleErrors).toEqual([]);
   });
 
-  it('shows the empty state when the class has no students', async () => {
+  it('shows the empty roster grid with a banner when the class has no students', async () => {
     const cls = await createClass({ name: '11A', academicYear: '2018 EC', schoolName: 'S', teacherName: 'T' });
     setSelectedClassId(cls.id);
 
     render(<Attendance onOpenMenu={() => {}} />);
-    await waitFor(() => expect(screen.getByText('Add students in Add Record first')).toBeTruthy());
+    await waitFor(() => expect(grids.length).toBeGreaterThan(0));
+    expect(screen.getByText('Add students in Add Record first')).toBeTruthy();
     expect(screen.getByText('Go to Add Record')).toBeTruthy();
+    const data = grids[grids.length - 1]!.data;
+    expect(data[0]?.slice(0, 5)).toEqual(['NO', 'Students name', 'Sex', 'Age', 'Semester']);
     expect(consoleErrors).toEqual([]);
   });
 });

@@ -68,13 +68,11 @@ export const en = {
     newClass: 'New class',
     semester: 'Semester',
     formTitle: 'New class',
-    className: 'Class name',
     grade: 'Grade',
     section: 'Section',
     academicYear: 'Academic year',
-    schoolName: 'School name',
-    teacherName: 'Teacher name',
-    required: 'Required'
+    required: 'Required',
+    duplicateClass: 'A class with this grade, section and academic year already exists.'
   },
   sheet: {
     no: 'NO',

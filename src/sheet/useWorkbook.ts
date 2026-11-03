@@ -59,6 +59,7 @@ export interface GridApi {
 }
 
 const SAVE_DELAY_MS = 300;
+const SAVE_VISIBILITY_MS = 250;
 
 // Owns the class/semester context, the sheet list and the debounced auto-save.
 // Pages stay presentational and never touch Dexie themselves.
@@ -103,6 +104,7 @@ export function useWorkbook() {
         markInvalid: (cells) => grid.markInvalidCells?.(cells)
       });
       activeSheetMeta.current = meta;
+      await new Promise((resolve) => window.setTimeout(resolve, SAVE_VISIBILITY_MS));
       setSaveState('saved');
     } catch {
       setSaveState('error');

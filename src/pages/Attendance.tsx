@@ -3,7 +3,7 @@ import HamburgerButton from '../components/HamburgerButton';
 import { ExportIcon } from '../components/icons';
 import { t } from '../i18n';
 import type { AttendanceStatus, ClassRow, Semester, StudentRow } from '../db/schema';
-import { listClasses } from '../db/repositories/classes';
+import { formatClassDisplayName, listClasses } from '../db/repositories/classes';
 import { listStudents } from '../db/repositories/students';
 import { addSubject, listSubjects } from '../db/repositories/subjects';
 import {
@@ -19,6 +19,7 @@ import { computePercent } from '../attendance/stats';
 import SpreadsheetGrid from '../sheet/SpreadsheetGrid';
 
 const SAVE_DELAY_MS = 300;
+const SAVE_VISIBILITY_MS = 250;
 const PERIODS = [1, 2, 3, 4, 5, 6, 7, 8];
 
 function todayIso(): string {
@@ -137,6 +138,7 @@ export default function Attendance({ onOpenMenu }: { onOpenMenu: () => void }) {
         else await clearRecord(sessionId, student.id);
       }
       await refreshPercentages(classId);
+      await new Promise((resolve) => window.setTimeout(resolve, SAVE_VISIBILITY_MS));
       setSaveState('saved');
     } catch {
       setSaveState('error');
@@ -249,7 +251,7 @@ export default function Attendance({ onOpenMenu }: { onOpenMenu: () => void }) {
         </button>
         <div className="min-w-0 flex-1 text-center leading-tight">
           <p className="truncate text-sm font-semibold text-navy">
-            {classRow ? `${classRow.name} - ${semester === 1 ? 'I' : 'II'}` : tr.title}
+            {classRow ? `${formatClassDisplayName(classRow)} - ${semester === 1 ? 'I' : 'II'}` : tr.title}
           </p>
           <p className="text-[11px] text-muted" role="status">
             {saveLabel}
@@ -314,7 +316,7 @@ export default function Attendance({ onOpenMenu }: { onOpenMenu: () => void }) {
       </div>
 
       <div className="mt-2 min-h-0 flex-1 overflow-auto border-t border-line bg-surface">
-        {loading ? null : !classRow || students.length === 0 ? (
+        {loading ? null : !classRow ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
             <p className="text-sm font-semibold text-navy">{tr.noStudentsTitle}</p>
             <p className="text-sm text-muted">{tr.noStudentsBody}</p>
@@ -326,19 +328,33 @@ export default function Attendance({ onOpenMenu }: { onOpenMenu: () => void }) {
             </a>
           </div>
         ) : (
-          <SpreadsheetGrid
-            sheetKey={classRow.id}
-            data={gridData}
-            rowCount={gridData.length}
-            colCount={10}
-            readOnlyColumns={readOnlyColumns}
-            freezeColumns={2}
-            freezeFirstRow
-            onCellTap={tapCell}
-            onDirty={markDirty}
-            loadingLabel={tr.saving}
-            failedLabel={tr.saveFailed}
-          />
+          <>
+            {students.length === 0 && (
+              <div className="flex flex-col items-center gap-2 border-b border-line bg-header-bg p-3 text-center">
+                <p className="text-sm font-semibold text-navy">{tr.noStudentsTitle}</p>
+                <p className="text-xs text-muted">{tr.noStudentsBody}</p>
+                <a
+                  href="#/add-record"
+                  className="rounded-btn bg-accent px-4 py-2 text-sm font-semibold text-surface"
+                >
+                  {tr.goToAddRecord}
+                </a>
+              </div>
+            )}
+            <SpreadsheetGrid
+              sheetKey={classRow.id}
+              data={gridData}
+              rowCount={gridData.length}
+              colCount={10}
+              readOnlyColumns={readOnlyColumns}
+              freezeColumns={2}
+              freezeFirstRow
+              onCellTap={tapCell}
+              onDirty={markDirty}
+              loadingLabel={tr.saving}
+              failedLabel={tr.saveFailed}
+            />
+          </>
         )}
       </div>
     </div>
