@@ -1,1 +1,0 @@
-{"root":["./src/App.tsx","./src/main.tsx","./src/components/BottomNav.tsx","./src/components/HamburgerButton.tsx","./src/components/MenuSheet.tsx","./src/components/icons.tsx","./src/i18n/am.ts","./src/i18n/en.ts","./src/i18n/index.ts","./src/i18n/om.ts","./src/pages/AddRecord.tsx","./src/pages/Home.tsx","./src/pages/Others.tsx"],"errors":true,"version":"5.9.3"}
