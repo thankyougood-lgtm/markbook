@@ -2,6 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import en from './i18n/en.json'
 import am from './i18n/am.json'
 import om from './i18n/om.json'
+import { db } from './db/db'
+import * as classRepo from './db/repositories/classRepo'
+import * as settingsRepo from './db/repositories/settingsRepo'
+import { createSampleData } from './db/sampleData'
 import './theme.css'
 
 type Language = 'en' | 'am' | 'om'
@@ -39,6 +43,23 @@ function App() {
     const saved = localStorage.getItem('markbook-theme')
     return saved === 'dark' ? 'dark' : 'light'
   })
+  const [classes, setClasses] = useState<Array<{ id?: number; name: string; openSemesters: number[] }>>([])
+  const [storageStatus, setStorageStatus] = useState({ supported: false, persisted: false })
+
+  useEffect(() => {
+    void db.open()
+    void (async () => {
+      const records = await classRepo.listClasses()
+      setClasses(records.map((record) => ({ id: record.id, name: record.name, openSemesters: record.openSemesters ?? [1] })))
+
+      const status = await settingsRepo.storageStatus()
+      setStorageStatus(status)
+      if (status.supported && !status.persisted) {
+        const persisted = await settingsRepo.persistStorage()
+        setStorageStatus({ supported: status.supported, persisted })
+      }
+    })()
+  }, [])
 
   useEffect(() => {
     document.documentElement.classList.toggle('theme-dark', theme === 'dark')
@@ -167,19 +188,31 @@ function App() {
             <div className="page-card home-card">
               <div className="field-block">
                 <label htmlFor="home-class-select">{t('home.classLabel')}</label>
-                <select id="home-class-select" value="" disabled>
-                  <option value="">{t('common.classPlaceholder')}</option>
+                <select id="home-class-select" value={classes[0]?.id ?? ''} disabled={classes.length === 0}>
+                  {classes.length === 0 ? (
+                    <option value="">{t('common.classPlaceholder')}</option>
+                  ) : (
+                    classes.map((item) => (
+                      <option key={item.id} value={item.id ?? ''}>
+                        {item.name}
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
 
               <div className="field-block">
                 <label htmlFor="home-semester-select">{t('home.semesterLabel')}</label>
-                <select id="home-semester-select" value="" disabled>
-                  <option value="">{t('common.semesterPlaceholder')}</option>
+                <select id="home-semester-select" value={classes[0]?.openSemesters[0] ?? ''} disabled={classes.length === 0}>
+                  {classes.length === 0 ? (
+                    <option value="">{t('common.semesterPlaceholder')}</option>
+                  ) : (
+                    <option value="1">Semester I</option>
+                  )}
                 </select>
               </div>
 
-              <p className="home-empty">{t('home.empty')}</p>
+              <p className="home-empty">{classes.length === 0 ? t('home.empty') : ''}</p>
             </div>
           </section>
         )}
@@ -216,6 +249,25 @@ function App() {
                   <option value="om">{t('settings.language.om')}</option>
                 </select>
               </div>
+
+              <div className="setting-row stacked">
+                <label>Storage</label>
+                <span className="setting-status">{storageStatus.supported ? (storageStatus.persisted ? 'Persisted' : 'Not persisted') : 'Unsupported'}</span>
+              </div>
+
+              {import.meta.env.DEV && (
+                <button
+                  type="button"
+                  className="sample-button"
+                  onClick={async () => {
+                    await createSampleData()
+                    const records = await classRepo.listClasses()
+                    setClasses(records.map((record) => ({ id: record.id, name: record.name, openSemesters: record.openSemesters ?? [1] })))
+                  }}
+                >
+                  Create sample data
+                </button>
+              )}
             </div>
           </section>
         )}
