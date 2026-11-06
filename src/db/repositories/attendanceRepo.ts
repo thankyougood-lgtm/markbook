@@ -5,6 +5,6 @@ export async function listAttendanceSessions(classId: number) {
 }
 
 export async function createAttendanceSession(data: { classId: number; date: string; period: number | null; subjectId: number | null }) {
-  const id = await db.attendanceSessions.add(data)
+  const id = (await db.attendanceSessions.add(data)) as number
   return { ...data, id }
 }

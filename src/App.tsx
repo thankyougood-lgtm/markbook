@@ -6,6 +6,7 @@ import { db } from './db/db'
 import * as classRepo from './db/repositories/classRepo'
 import * as settingsRepo from './db/repositories/settingsRepo'
 import { createSampleData } from './db/sampleData'
+import { AddRecordPage } from './pages/AddRecord/AddRecordPage'
 import './theme.css'
 
 type Language = 'en' | 'am' | 'om'
@@ -20,7 +21,7 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   { key: 'home', labelKey: 'nav.home', icon: 'home' },
-  { key: 'addRecord', labelKey: 'nav.addRecord', icon: 'plus' },
+  { key: 'addRecord', labelKey: 'nav.dataPlus', icon: 'plus' },
   { key: 'attendance', labelKey: 'nav.attendance', icon: 'calendar' },
   { key: 'analytics', labelKey: 'nav.analytics', icon: 'chart' },
   { key: 'settings', labelKey: 'nav.settings', icon: 'settings' },
@@ -35,6 +36,7 @@ const translations = {
 function App() {
   const [page, setPage] = useState<PageKey>('home')
   const [menuOpen, setMenuOpen] = useState(false)
+  const [exportMenuOpen, setExportMenuOpen] = useState(false)
   const [language, setLanguage] = useState<Language>(() => {
     const saved = localStorage.getItem('markbook-language')
     return saved === 'am' || saved === 'om' ? saved : 'en'
@@ -44,13 +46,18 @@ function App() {
     return saved === 'dark' ? 'dark' : 'light'
   })
   const [classes, setClasses] = useState<Array<{ id?: number; name: string; openSemesters: number[] }>>([])
+  const [homeClassId, setHomeClassId] = useState<number | null>(null)
+  const [homeSemester, setHomeSemester] = useState<number>(1)
+  const [classesReady, setClassesReady] = useState(false)
   const [storageStatus, setStorageStatus] = useState({ supported: false, persisted: false })
 
   useEffect(() => {
     void db.open()
     void (async () => {
       const records = await classRepo.listClasses()
+
       setClasses(records.map((record) => ({ id: record.id, name: record.name, openSemesters: record.openSemesters ?? [1] })))
+      setClassesReady(true)
 
       const status = await settingsRepo.storageStatus()
       setStorageStatus(status)
@@ -72,6 +79,20 @@ function App() {
     document.documentElement.lang = targetLang
     localStorage.setItem('markbook-language', language)
   }, [language])
+
+  useEffect(() => {
+    if (classes.length === 0) {
+      setHomeClassId(null)
+      setHomeSemester(1)
+      return
+    }
+
+    const nextClassId = homeClassId && classes.some((item) => item.id === homeClassId) ? homeClassId : classes[0]?.id ?? null
+    setHomeClassId(nextClassId)
+
+    const currentClass = classes.find((item) => item.id === nextClassId) ?? classes[0]
+    setHomeSemester(currentClass?.openSemesters?.[0] ?? 1)
+  }, [classes, homeClassId])
 
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
@@ -102,7 +123,7 @@ function App() {
   const menuLinks = useMemo<Array<{ labelKey: string; target: PageKey }>>(
     () => [
       { labelKey: 'nav.home', target: 'home' },
-      { labelKey: 'nav.addRecord', target: 'addRecord' },
+      { labelKey: 'nav.dataPlus', target: 'addRecord' },
       { labelKey: 'nav.attendance', target: 'attendance' },
       { labelKey: 'nav.analytics', target: 'analytics' },
       { labelKey: 'nav.settings', target: 'settings' },
@@ -112,6 +133,11 @@ function App() {
 
   const openMenu = () => setMenuOpen(true)
   const closeMenu = () => setMenuOpen(false)
+
+  const handleExportRequest = (format: 'csv' | 'xlsx' | 'pdf') => {
+    setExportMenuOpen(false)
+    window.dispatchEvent(new CustomEvent('markbook:export', { detail: { format } }))
+  }
 
   const handleMenuSelect = (target: PageKey) => {
     setPage(target)
@@ -133,11 +159,25 @@ function App() {
         <div className="top-bar-left">
           {showExport && (
             <div className="export-menu-wrap">
-              <button type="button" className="export-button" aria-label={t('menu.export')}>
+              <button
+                type="button"
+                className="export-button"
+                aria-label={t('menu.export')}
+                aria-expanded={exportMenuOpen}
+                onClick={() => setExportMenuOpen((current) => !current)}
+              >
                 {t('menu.export')}
               </button>
-              <div className="export-menu" role="menu" aria-label={t('menu.export')}>
-                <span>{t('menu.available')}</span>
+              <div className={`export-menu ${exportMenuOpen ? 'is-open' : ''}`} role="menu" aria-label={t('menu.export')}>
+                <button type="button" className="menu-link" onClick={() => handleExportRequest('csv')}>
+                  CSV
+                </button>
+                <button type="button" className="menu-link" onClick={() => handleExportRequest('xlsx')}>
+                  XLSX
+                </button>
+                <button type="button" className="menu-link" onClick={() => handleExportRequest('pdf')}>
+                  PDF
+                </button>
               </div>
             </div>
           )}
@@ -186,38 +226,61 @@ function App() {
         {page === 'home' && (
           <section className="page-panel">
             <div className="page-card home-card">
-              <div className="field-block">
-                <label htmlFor="home-class-select">{t('home.classLabel')}</label>
-                <select id="home-class-select" value={classes[0]?.id ?? ''} disabled={classes.length === 0}>
-                  {classes.length === 0 ? (
-                    <option value="">{t('common.classPlaceholder')}</option>
-                  ) : (
-                    classes.map((item) => (
-                      <option key={item.id} value={item.id ?? ''}>
-                        {item.name}
-                      </option>
-                    ))
-                  )}
-                </select>
-              </div>
+              {!classesReady ? (
+                <div className="home-selector-row" aria-live="polite">
+                  <div className="select-wrap">
+                    <select id="home-class-select" value="" disabled aria-label={t('home.classLabel')}>
+                      <option value="">{t('home.classLabel')}</option>
+                    </select>
+                  </div>
 
-              <div className="field-block">
-                <label htmlFor="home-semester-select">{t('home.semesterLabel')}</label>
-                <select id="home-semester-select" value={classes[0]?.openSemesters[0] ?? ''} disabled={classes.length === 0}>
-                  {classes.length === 0 ? (
-                    <option value="">{t('common.semesterPlaceholder')}</option>
-                  ) : (
-                    <option value="1">Semester I</option>
-                  )}
-                </select>
-              </div>
+                  <div className="select-wrap">
+                    <select id="home-semester-select" value={1} disabled aria-label={t('home.semesterLabel')}>
+                      <option value={1}>{t('home.semesterLabel')}</option>
+                    </select>
+                  </div>
+                </div>
+              ) : classes.length > 0 ? (
+                <div className="home-selector-row">
+                  <div className="select-wrap">
+                    <select
+                      id="home-class-select"
+                      value={homeClassId ?? ''}
+                      onChange={(event) => setHomeClassId(Number(event.target.value) || null)}
+                      aria-label={t('home.classLabel')}
+                    >
+                      {classes.map((item) => (
+                        <option key={item.id} value={item.id ?? ''}>
+                          {item.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-              <p className="home-empty">{classes.length === 0 ? t('home.empty') : ''}</p>
+                  <div className="select-wrap">
+                    <select
+                      id="home-semester-select"
+                      value={homeSemester}
+                      onChange={(event) => setHomeSemester(Number(event.target.value))}
+                      aria-label={t('home.semesterLabel')}
+                    >
+                      <option value={1}>{t('semester.i')}</option>
+                      <option value={2}>{t('semester.ii')}</option>
+                    </select>
+                  </div>
+                </div>
+              ) : (
+                <p className="home-empty">
+                  <button type="button" className="home-empty-link" onClick={() => setPage('addRecord')}>
+                    {t('home.empty')}
+                  </button>
+                </p>
+              )}
             </div>
           </section>
         )}
 
-        {page === 'addRecord' && renderPlaceholderPage('addRecord')}
+        {page === 'addRecord' && <AddRecordPage />}
         {page === 'attendance' && renderPlaceholderPage('attendance')}
         {page === 'analytics' && renderPlaceholderPage('analytics')}
 

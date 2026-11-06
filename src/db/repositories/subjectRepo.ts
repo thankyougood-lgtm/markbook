@@ -1,4 +1,4 @@
-import { db } from '../db'
+import { db, type SubjectRow } from '../db'
 
 export interface CreateSubjectInput {
   classId: number
@@ -13,7 +13,7 @@ export async function listSubjects(classId: number) {
   return db.subjects.where('classId').equals(classId).filter((subject) => !subject.archivedAt).sortBy('order')
 }
 
-export async function createSubject(input: CreateSubjectInput) {
+export async function createSubject(input: CreateSubjectInput): Promise<SubjectRow & { id: number }> {
   const trimmed = input.name.trim()
   if (!trimmed) {
     throw new Error('Subject name is required')
@@ -29,19 +29,27 @@ export async function createSubject(input: CreateSubjectInput) {
     throw new Error('Subject already exists')
   }
 
+  const kind = input.kind ?? 'score'
+  const safeMaxScore = Number.isFinite(input.maxScore) && input.maxScore > 0 ? input.maxScore : 100
   const order = input.order ?? (await db.subjects.where('classId').equals(input.classId).count())
-  const record = {
+  const record: SubjectRow = {
     classId: input.classId,
     name: trimmed,
-    maxScore: input.maxScore,
+    maxScore: safeMaxScore,
     order,
     archivedAt: null,
-    kind: input.kind ?? 'score',
-    options: input.options ?? [],
+    kind,
+    options: kind === 'dropdown' ? input.options ?? ['Present', 'Absent', 'Late', 'Excused'] : [],
   }
 
-  const id = await db.subjects.add(record)
+  const id = (await db.subjects.add(record)) as number
   return { ...record, id }
+}
+
+export async function updateSubject(subject: SubjectRow) {
+  const next = { ...subject, name: subject.name.trim() }
+  await db.subjects.put(next)
+  return next
 }
 
 export async function archiveSubject(subjectId: number) {

@@ -1,4 +1,4 @@
-import { db } from '../db'
+import { db, type StudentRow } from '../db'
 
 export interface CreateStudentInput {
   classId: number
@@ -13,14 +13,14 @@ export async function listStudents(classId: number) {
   return db.students.where('classId').equals(classId).filter((student) => !student.archivedAt).sortBy('order')
 }
 
-export async function createStudent(input: CreateStudentInput) {
+export async function createStudent(input: CreateStudentInput): Promise<StudentRow & { id: number }> {
   const trimmed = input.fullName.trim()
   if (!trimmed) {
     throw new Error('Student name is required')
   }
 
   const order = input.order ?? (await db.students.where('classId').equals(input.classId).count())
-  const record = {
+  const record: StudentRow = {
     classId: input.classId,
     serialNo: input.serialNo,
     fullName: trimmed,
@@ -30,8 +30,14 @@ export async function createStudent(input: CreateStudentInput) {
     archivedAt: null,
   }
 
-  const id = await db.students.add(record)
+  const id = (await db.students.add(record)) as number
   return { ...record, id }
+}
+
+export async function updateStudent(student: StudentRow) {
+  const next = { ...student, fullName: student.fullName.trim() }
+  await db.students.put(next)
+  return next
 }
 
 export async function archiveStudent(studentId: number) {

@@ -29,6 +29,9 @@
   "dependencies": {
     "dexie": "^4.4.7",
     "dexie-react-hooks": "^4.4.0",
-    "nanoid": "^6.0.2"
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.9",
+    "nanoid": "^6.0.2",
+    "xlsx-js-style": "^1.2.0"
   }
 }
