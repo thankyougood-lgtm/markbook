@@ -3,6 +3,7 @@ import Dexie, { type Table } from 'dexie'
 export type Semester = 1 | 2
 
 export type ScoreKind = 'score' | 'text' | 'number' | 'dropdown'
+export type ScoreValue = number | string | null
 
 export interface MarkBookClass {
   id?: number
@@ -50,7 +51,7 @@ export interface ScoreRow {
   studentId: number
   semester: Semester
   subjectId: number
-  value: number | null
+  value: ScoreValue
 }
 
 export interface AttendanceSessionRow {

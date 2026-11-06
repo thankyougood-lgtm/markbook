@@ -24,12 +24,17 @@ body,
 body {
   overflow-x: hidden;
   background: var(--bg-page);
+  font-weight: 500;
 }
 
 button,
 select,
 input {
   font: inherit;
+}
+
+button {
+  font-weight: 700;
 }
 
 .app-shell {
@@ -82,13 +87,25 @@ input {
   top: calc(100% + 0.5rem);
   left: 0;
   min-width: 11rem;
-  padding: 0.65rem 0.8rem;
+  display: grid;
+  gap: 0.2rem;
+  padding: 0.55rem;
   background: var(--surface);
   color: var(--muted);
   border-radius: 0.75rem;
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
   font-size: 0.78rem;
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.export-menu.is-open {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
 }
 
 .hamburger-button {
@@ -137,6 +154,48 @@ input {
 .home-card {
   display: grid;
   gap: 1rem;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.home-selector-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.select-wrap {
+  position: relative;
+}
+
+.select-wrap::after {
+  content: '';
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-right: 2px solid var(--navy);
+  border-bottom: 2px solid var(--navy);
+  transform: translateY(-65%) rotate(45deg);
+  pointer-events: none;
+}
+
+.home-selector-row select {
+  width: 100%;
+  min-height: 3.1rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  color: var(--navy);
+  padding: 0.8rem 2.7rem 0.8rem 1rem;
+  appearance: none;
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.2;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
 }
 
 .field-block {
@@ -164,10 +223,21 @@ input {
 
 .home-empty {
   margin: 0;
-  border-top: 1px solid var(--border);
-  padding-top: 1rem;
   color: var(--muted);
   line-height: 1.5;
+  text-align: center;
+}
+
+.home-empty-link {
+  border: none;
+  background: transparent;
+  color: var(--navy);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.18rem;
+  cursor: pointer;
+  padding: 0;
 }
 
 .placeholder-card {
@@ -222,6 +292,358 @@ input {
   border-radius: 999px;
   padding: 0.7rem 1rem;
   font-weight: 700;
+}
+
+.add-record-page {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100vh - 7rem);
+  padding-bottom: calc(var(--bottom-nav-height) + var(--safe-area-bottom));
+}
+
+.add-record-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+  padding: 0.5rem 0.2rem 0.75rem;
+}
+
+.record-meta-block {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.record-class-name {
+  color: var(--navy);
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+.record-school-name,
+.record-semester {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.save-indicator {
+  align-self: center;
+  color: var(--primary);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.45rem 0.6rem;
+  border-radius: 999px;
+  background: var(--primary-soft);
+}
+
+.record-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.15rem 0.2rem 0.7rem;
+}
+
+.toolbar-button {
+  min-height: 2.3rem;
+  padding: 0.48rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--navy);
+  font-weight: 800;
+  line-height: 1.2;
+  box-shadow: 0 2px 8px rgba(11, 31, 92, 0.05);
+}
+
+.utility-button {
+  min-height: 2rem;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--navy);
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.utility-button.danger-button {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: rgba(230, 73, 75, 0.08);
+}
+
+.primary-button {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+  box-shadow: 0 8px 18px rgba(47, 91, 224, 0.22);
+}
+
+.spreadsheet-shell {
+  display: block;
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 1rem;
+  overflow: auto;
+  box-shadow: var(--shadow);
+}
+
+.spreadsheet-table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+}
+
+.grid-header-row,
+.grid-row {
+  display: grid;
+  grid-template-columns: 48px 160px 72px 72px 120px 120px 120px 140px;
+  min-width: 760px;
+}
+
+.grid-header-row {
+  background: var(--surface-alt);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.grid-cell {
+  min-height: 2.5rem;
+  padding: 0.45rem 0.5rem;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  color: var(--navy);
+  background: var(--surface);
+  font-size: 0.76rem;
+  position: relative;
+}
+
+.header-cell {
+  background: var(--surface-alt);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.column-header-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+}
+
+.column-resizer {
+  position: absolute;
+  top: -0.2rem;
+  right: -0.2rem;
+  width: 0.42rem;
+  height: calc(100% + 0.4rem);
+  border: 0;
+  background: transparent;
+  cursor: col-resize;
+  touch-action: none;
+  padding: 0;
+}
+
+.column-resizer::before {
+  content: '';
+  position: absolute;
+  inset: 0.25rem 0.12rem;
+  border-radius: 999px;
+  background: transparent;
+}
+
+.column-resizer:active::before,
+.column-resizer:hover::before {
+  background: rgba(47, 91, 224, 0.2);
+}
+
+.header-button {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  padding: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.header-button:hover,
+.header-button:focus-visible {
+  outline: none;
+  color: var(--primary);
+}
+
+.corner-cell {
+  background: var(--surface-alt);
+}
+
+.row-index,
+.total-cell {
+  background: var(--surface-alt);
+  font-weight: 700;
+}
+
+.row-delete-cell {
+  background: var(--surface-alt);
+  width: 88px;
+  min-width: 88px;
+  justify-content: center;
+}
+
+.column-delete-button {
+  position: absolute;
+  right: 1.25rem;
+  top: 50%;
+  transform: translateY(-50%);
+  min-height: 1.5rem;
+  padding: 0.2rem 0.45rem;
+  font-size: 0.8rem;
+  z-index: 2;
+}
+
+.total-header {
+  color: var(--primary);
+}
+
+.student-name {
+  font-weight: 600;
+}
+
+.sheet-tabs-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding: 0.75rem 0.2rem 0.5rem;
+  scrollbar-width: none;
+  margin-top: auto;
+}
+
+.sheet-tabs-row::-webkit-scrollbar {
+  display: none;
+}
+
+.sheet-tab,
+.sheet-add-tab {
+  min-height: 2.4rem;
+  padding: 0.48rem 0.8rem;
+  border-radius: 0.75rem 0.75rem 0 0;
+  border: 1px solid var(--border);
+  background: var(--surface-alt);
+  color: var(--navy);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.sheet-tab.is-active {
+  background: var(--surface);
+  border-bottom-color: var(--surface);
+  box-shadow: 0 -1px 0 0 var(--primary);
+}
+
+.sheet-add-tab {
+  width: 2.3rem;
+  padding: 0;
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+  border-radius: 999px;
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.inline-grid-input {
+  width: 100%;
+  min-height: 2.1rem;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  padding: 0;
+}
+
+.inline-grid-input:focus {
+  outline: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+.spreadsheet-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface-alt);
+}
+
+.class-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 31, 92, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 90;
+}
+
+.class-dialog {
+  width: min(100%, 30rem);
+  display: grid;
+  gap: 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 1.1rem;
+  box-shadow: var(--shadow);
+  padding: 1rem;
+}
+
+.class-dialog h3 {
+  margin: 0;
+  color: var(--navy);
+  font-size: 1.2rem;
+}
+
+.class-dialog label {
+  display: grid;
+  gap: 0.35rem;
+  color: var(--navy);
+  font-weight: 600;
+}
+
+.class-dialog input,
+.class-dialog select {
+  min-height: 2.8rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--surface-alt);
+  color: var(--text);
+  padding: 0.6rem 0.75rem;
+}
+
+.dialog-two-col {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
 }
 
 .toggle-switch {
@@ -325,8 +747,8 @@ input {
   bottom: 0;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 0.35rem;
-  background: rgba(255, 255, 255, 0.9);
+  gap: 0.3rem;
+  background: rgba(255, 255, 255, 0.96);
   border-top: 1px solid var(--border);
   backdrop-filter: blur(10px);
   padding: 0.55rem 0.6rem calc(0.7rem + var(--safe-area-bottom));
@@ -338,13 +760,14 @@ input {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 0.2rem;
+  gap: 0.18rem;
   min-height: 3.2rem;
   background: transparent;
   border: 0;
-  border-radius: 0.75rem;
+  border-radius: 0.8rem;
   color: var(--muted);
-  padding: 0.3rem 0.2rem;
+  padding: 0.28rem 0.18rem;
+  font-weight: 800;
 }
 
 .nav-button.is-active {

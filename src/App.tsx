@@ -142,6 +142,7 @@ function App() {
   const handleMenuSelect = (target: PageKey) => {
     setPage(target)
     closeMenu()
+    setExportMenuOpen(false)
   }
 
   const renderPlaceholderPage = (key: Exclude<PageKey, 'home' | 'settings'>) => (

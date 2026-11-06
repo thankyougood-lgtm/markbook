@@ -8,6 +8,7 @@ export interface CreateClassInput {
   schoolName?: string
   teacherName?: string
   semester?: 1 | 2
+  allowDuplicate?: boolean
 }
 
 export async function listClasses(): Promise<Array<MarkBookClass & { id: number }>> {
@@ -34,7 +35,7 @@ export async function createClass(input: CreateClassInput): Promise<MarkBookClas
     )
     .first()
 
-  if (existing) {
+  if (existing && !input.allowDuplicate) {
     const openSemesters = normalizeSemesters(existing.openSemesters ?? [])
     if (openSemesters.includes(semester)) {
       throw new Error('Class already exists')
@@ -45,7 +46,9 @@ export async function createClass(input: CreateClassInput): Promise<MarkBookClas
     return { ...existing, openSemesters: nextOpenSemesters, id: existing.id as number }
   }
 
-  const duplicateName = await db.classes.filter((record) => !record.archivedAt && record.name === name).first()
+  const duplicateName = !input.allowDuplicate
+    ? await db.classes.filter((record) => !record.archivedAt && record.name === name).first()
+    : null
   if (duplicateName) {
     throw new Error('Class already exists')
   }

@@ -665,21 +665,37 @@ export function AddRecordPage() {
   const createClass = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
 
-    const className = `Grade ${dialogState.grade} ${dialogState.section.trim() || 'A'}`
+    const normalizedSection = (dialogState.section.trim() || 'A').toUpperCase()
+    const normalizedAcademicYear = dialogState.academicYear.trim() || getText('addRecord.defaultYear')
+    const baseName = `Grade ${dialogState.grade} ${normalizedSection}`
+    const isDuplicateClass = classes.some(
+      (item) =>
+        item.grade === dialogState.grade &&
+        String(item.section ?? '').trim().toUpperCase() === normalizedSection &&
+        String(item.academicYear ?? '').trim() === normalizedAcademicYear,
+    )
+    const className = isDuplicateClass ? `${baseName} (${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})` : baseName
 
     try {
       const created = await classRepo.createClass({
         name: className,
         grade: dialogState.grade,
-        section: dialogState.section.trim() || 'A',
-        academicYear: dialogState.academicYear.trim() || getText('addRecord.defaultYear'),
+        section: normalizedSection,
+        academicYear: normalizedAcademicYear,
         schoolName: dialogState.schoolName.trim(),
         semester: dialogState.semester,
+        allowDuplicate: true,
       })
 
       await classRepo.openSheet(created.id ?? 0, dialogState.semester)
 
-      setClasses((current) => [...current, created])
+      setClasses((current) => {
+        const existingIndex = current.findIndex((item) => item.id === created.id)
+        if (existingIndex >= 0) {
+          return current.map((item) => (item.id === created.id ? created : item))
+        }
+        return [...current, created]
+      })
       setSelectedClassId(created.id ?? null)
       setSemester(dialogState.semester)
       setDialogOpen(false)
