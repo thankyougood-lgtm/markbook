@@ -54,3 +54,13 @@ speaker before release.
 - `menu.about` Waa'ee — "about"
 - `placeholder.title` Dhiyootti dhufa — "comes soon"
 - `placeholder.body` Fuulli kun gosa gara fuulduraatti ni dabalama. — "this page will be added later"
+
+## Analytics and Settings pages
+- All new `analytics.*`, `settings.*`, `errors.*`, and `common.close` strings in
+  `am.ts` and `om.ts` are engineering drafts and need native-speaker review.
+- Backup/restore wording is safety-critical: review `settings.replaceWarning`,
+  `settings.restoreSafety`, `settings.restoreFailed`, and the table names first.
+- Language names stay in their own language: English, አማርኛ, Afan Oromo.
+- The About text deliberately distinguishes locally stored records from the
+  installable/offline app-shell feature, which is not implemented yet.
+- New page strings were added in en/am/om; the am/om drafts are listed above.

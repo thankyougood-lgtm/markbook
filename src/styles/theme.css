@@ -261,10 +261,12 @@ thead .att-name {
 html,
 body,
 #root {
-  height: 100%;
-  /* The sheet scrolls inside its own container; the page never scrolls sideways. */
+  min-height: 100%;
+  /* The sheet scrolls inside its own container; the page never scrolls sideways.
+     Analytics/Settings are normal document-flow pages and must scroll vertically
+     to reach all charts/cards above the fixed bottom navigation. */
   max-width: 100%;
-  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 /* Keep the editing chrome above the on-screen keyboard on both platforms. */

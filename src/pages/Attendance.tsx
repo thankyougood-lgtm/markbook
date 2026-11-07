@@ -376,6 +376,7 @@ export default function Attendance({ onOpenMenu }: { onOpenMenu: () => void }) {
   return (
     <div
       className="flex flex-col"
+      data-testid="attendance-page"
       style={{ height: 'calc(100vh - var(--nav-height) - var(--nav-gap) * 2 - var(--safe-bottom))' }}
     >
       <div className="flex items-center gap-2 px-3 pt-3">

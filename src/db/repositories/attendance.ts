@@ -19,6 +19,15 @@ export async function listSessions(
   );
 }
 
+/** All sessions of a class, including legacy sessions as Semester I. */
+export async function listSessionsForClass(
+  classId: number,
+  semester?: Semester
+): Promise<AttendanceSessionRow[]> {
+  const rows = await db.attendanceSessions.where('classId').equals(classId).toArray();
+  return rows.filter((s) => semester === undefined || (s.semester ?? 1) === semester);
+}
+
 export async function findSession(
   classId: number,
   date: string,
