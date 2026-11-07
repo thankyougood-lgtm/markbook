@@ -10,6 +10,8 @@ speaker before release.
 
 ## Attendance spreadsheet (stage 7 rewrite)
 - `attendance.semester` and `attendance.notRecorded` — drafts.
+- `attendance.exportLater`, `attendance.loading`, `attendance.loadFailed`,
+  `attendance.retry` — drafts added while finishing the Attendance page.
 
 ## Attendance (stage 7)
 - `attendance.*` (title, date, period, subject, subjectPlaceholder, no, studentName,

@@ -52,7 +52,11 @@ export const am: Dict = {
     statusL: 'L',
     statusE: 'E',
     semester: 'ሴሚስተር',
-    notRecorded: 'አልተመዘገበም'
+    notRecorded: 'አልተመዘገበም',
+    exportLater: 'ወደ ውጭ መላክ በቀጣይ ስሪት ይመጣል',
+    loading: 'ክትትል በመጫን ላይ...',
+    loadFailed: 'ክትትልን መጫን አልተቻለም',
+    retry: 'እንደገና ሞክር'
   },
 
   placeholder: {

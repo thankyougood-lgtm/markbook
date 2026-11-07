@@ -49,7 +49,11 @@ export const en = {
     statusL: 'L',
     statusE: 'E',
     semester: 'Semester',
-    notRecorded: 'not recorded'
+    notRecorded: 'not recorded',
+    exportLater: 'Export comes in a later version',
+    loading: 'Loading attendance...',
+    loadFailed: 'Could not load attendance',
+    retry: 'Retry'
   },
 
   placeholder: {

@@ -10,10 +10,6 @@ function Placeholder({ title }: { title: string }) {
   );
 }
 
-export function Attendance() {
-  return <Placeholder title={t().pages.attendance} />;
-}
-
 export function Analytics() {
   return <Placeholder title={t().pages.analytics} />;
 }

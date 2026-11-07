@@ -7,6 +7,8 @@ import {
   getOrCreateSession,
   listRecords,
   listRecordsForClass,
+  listSessions,
+  replaceSessionRecords,
   setRecord
 } from '../db/repositories/attendance';
 import { computePercent, nextStatus } from './stats';
@@ -71,6 +73,39 @@ describe('sessions', () => {
     await clearRecord(sessionId, a);
     expect(await listRecords(sessionId)).toHaveLength(0);
     expect((await findSession(1, '2024-01-02', 1, 7))?.id).toBe(sessionId);
+  });
+
+  it('keeps Semester I and Semester II sessions separate and treats legacy sessions as Semester I', async () => {
+    const first = await getOrCreateSession(1, '2024-01-02', 1, 7, 1);
+    const second = await getOrCreateSession(1, '2024-01-02', 1, 7, 2);
+    expect(second).not.toBe(first);
+    expect((await findSession(1, '2024-01-02', 1, 7, 1))?.id).toBe(first);
+    expect((await findSession(1, '2024-01-02', 1, 7, 2))?.id).toBe(second);
+    expect(await listSessions(1, '2024-01-02', 1)).toHaveLength(1);
+    expect(await listSessions(1, '2024-01-02', 2)).toHaveLength(1);
+
+    const legacy = await db.attendanceSessions.add({ classId: 1, date: '2024-01-03', period: 1, subjectId: null });
+    expect((await findSession(1, '2024-01-03', 1, null, 1))?.id).toBe(legacy);
+    expect(await findSession(1, '2024-01-03', 1, null, 2)).toBeUndefined();
+  });
+
+  it('replaces only the current roster scope and preserves records outside it', async () => {
+    const active = await addStudent(1, { fullName: 'Abebe', sex: 'M', age: 16 });
+    const archived = await addStudent(1, { fullName: 'Hidden', sex: 'M', age: 17 });
+    const sessionId = await getOrCreateSession(1, '2024-01-02', 1, null, 1);
+    await setRecord(sessionId, active, 'P');
+    await setRecord(sessionId, archived, 'A');
+    await archiveStudent(archived);
+
+    await replaceSessionRecords(sessionId, { [active]: 'L' }, [active]);
+    const records = await listRecords(sessionId);
+    expect(records.find((record) => record.studentId === active)?.status).toBe('L');
+    expect(records.find((record) => record.studentId === archived)?.status).toBe('A');
+
+    await replaceSessionRecords(sessionId, {}, [active]);
+    const cleared = await listRecords(sessionId);
+    expect(cleared.some((record) => record.studentId === active)).toBe(false);
+    expect(cleared.some((record) => record.studentId === archived)).toBe(true);
   });
 
   it('aggregates every record of the class for the percent column', async () => {

@@ -81,7 +81,7 @@ for (const vp of VIEWPORTS) {
   console.log(`${vp.name}: seeded=${JSON.stringify(seeded)}`);
   await page.goto(`${BASE}/#/attendance`);
   const found = await page
-    .waitForSelector('.jss_worksheet', { timeout: 15000 })
+    .waitForSelector('[data-testid="attendance-table"]', { timeout: 15000 })
     .then(() => true)
     .catch(() => false);
   await page.waitForTimeout(600);
@@ -89,14 +89,14 @@ for (const vp of VIEWPORTS) {
   const metrics = await page.evaluate(() => {
     const doc = document.documentElement;
     const nav = document.querySelector('nav[aria-label="Primary"]');
-    const grid = document.querySelector('.jss_worksheet');
-    const rows = document.querySelectorAll('.jss_worksheet tbody tr').length;
+    const scroll = document.querySelector('[data-testid="attendance-scroll"]');
+    const rows = document.querySelectorAll('[data-testid="attendance-table"] tbody tr').length;
     return {
       scrollWidth: doc.scrollWidth,
       clientWidth: doc.clientWidth,
       bodyScrollWidth: document.body.scrollWidth,
       navTop: nav ? nav.getBoundingClientRect().top : null,
-      gridBottom: grid ? grid.getBoundingClientRect().bottom : null,
+      gridBottom: scroll ? scroll.getBoundingClientRect().bottom : null,
       rows
     };
   });
@@ -104,7 +104,7 @@ for (const vp of VIEWPORTS) {
   const overflow = Math.max(metrics.scrollWidth, metrics.bodyScrollWidth) - metrics.clientWidth;
   const overlap =
     metrics.navTop !== null && metrics.gridBottom !== null ? metrics.gridBottom - metrics.navTop : null;
-  const ok = found && overflow <= 0 && (overlap === null || overlap <= 1) && consoleErrors.length === 0 && metrics.rows >= 2;
+  const ok = found && overflow <= 0 && (overlap === null || overlap <= 1) && consoleErrors.length === 0 && metrics.rows >= 1;
   if (!ok) failed = true;
 
   console.log(

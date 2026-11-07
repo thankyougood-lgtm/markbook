@@ -56,6 +56,9 @@ export interface AttendanceSessionRow {
   date: string;
   period: number;
   subjectId: number | null;
+  /** Optional semester tag. Legacy sessions without it are treated as Semester I.
+   *  This is a non-indexed field, so no Dexie schema/version change is needed. */
+  semester?: Semester;
 }
 
 export interface AttendanceRecordRow {

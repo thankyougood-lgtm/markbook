@@ -52,7 +52,11 @@ export const om: Dict = {
     statusL: 'L',
     statusE: 'E',
     semester: 'Semisteera',
-    notRecorded: 'hin galmeeffamne'
+    notRecorded: 'hin galmeeffamne',
+    exportLater: 'Erguun gosa gara fuulduraatti dhufa',
+    loading: 'Hordoffiin fe\'amaa jira...',
+    loadFailed: 'Hordoffii fe\'uun hin danda\'amne',
+    retry: 'Irra deebi\'ii yaali'
   },
 
   placeholder: {
