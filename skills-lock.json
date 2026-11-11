@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "token-efficiency": {
+      "source": "rahulppatidar/ai-agent-skills",
+      "sourceType": "github",
+      "skillPath": "token-efficiency/SKILL.md",
+      "computedHash": "689dfce34dc6987d9d9639bccbcce351e32f46177f4e1ccf297a78b75eec716e"
+    }
+  }
+}

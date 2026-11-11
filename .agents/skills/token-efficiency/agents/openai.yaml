@@ -1,0 +1,9 @@
+interface:
+  display_name: "Token Efficiency"
+  short_description: "Reduce token usage without sacrificing quality"
+  default_prompt: "Use $token-efficiency in Balanced mode to complete this task with minimal total token usage while preserving quality."
+policy:
+  products:
+  - "CHAT"
+  - "CODEX"
+  allow_implicit_invocation: true
