@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import en from './i18n/en.json'
 import am from './i18n/am.json'
 import om from './i18n/om.json'
@@ -9,6 +9,10 @@ import { AddRecordPage } from './pages/AddRecord/AddRecordPage'
 import { AttendancePage } from './pages/Attendance/AttendancePage'
 import { HomePage } from './pages/Home/HomePage'
 import './theme.css'
+
+const AnalyticsPage = lazy(() =>
+  import('./pages/Analytics/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage })),
+)
 
 type Language = 'en' | 'am' | 'om'
 type ThemeMode = 'light' | 'dark'
@@ -162,20 +166,16 @@ function App() {
     window.dispatchEvent(new CustomEvent('markbook:export', { detail: { format } }))
   }
 
+  const handleRosterExportRequest = (format: 'csv' | 'xlsx' | 'pdf') => {
+    setExportMenuOpen(false)
+    window.dispatchEvent(new CustomEvent('markbook:roster-export', { detail: { format } }))
+  }
+
   const handleMenuSelect = (target: PageKey) => {
     setPage(target)
     closeMenu()
     setExportMenuOpen(false)
   }
-
-  const renderPlaceholderPage = (key: Exclude<PageKey, 'home' | 'settings'>) => (
-    <section className="page-panel">
-      <div className="placeholder-card">
-        <h2>{t(`page.${key}`)}</h2>
-        <p>{t('page.comingSoon')}</p>
-      </div>
-    </section>
-  )
 
   return (
     <div className="app-shell min-h-screen bg-[var(--bg-page)] text-[var(--text)]">
@@ -203,6 +203,20 @@ function App() {
                 <button type="button" className="menu-link" onClick={() => handleExportRequest('pdf')}>
                   {t('export.pdf')}
                 </button>
+                {page === 'addRecord' && (
+                  <>
+                    <div className="menu-divider" />
+                    <button type="button" className="menu-link" onClick={() => handleRosterExportRequest('xlsx')}>
+                      {t('export.rosterXlsx')}
+                    </button>
+                    <button type="button" className="menu-link" onClick={() => handleRosterExportRequest('csv')}>
+                      {t('export.rosterCsv')}
+                    </button>
+                    <button type="button" className="menu-link" onClick={() => handleRosterExportRequest('pdf')}>
+                      {t('export.rosterPdf')}
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           )}
@@ -259,7 +273,11 @@ function App() {
 
         {page === 'addRecord' && <AddRecordPage />}
         {page === 'attendance' && <AttendancePage />}
-        {page === 'analytics' && renderPlaceholderPage('analytics')}
+        {page === 'analytics' && (
+          <Suspense fallback={<div className="page-panel"><div className="placeholder-card"><p>{t('analytics.loading')}</p></div></div>}>
+            <AnalyticsPage />
+          </Suspense>
+        )}
 
         {page === 'settings' && (
           <section className="page-panel">
@@ -351,7 +369,7 @@ function App() {
           >
             <h3 id="about-dialog-title">{t('about.title')}</h3>
             <p className="text-sm font-semibold text-[var(--navy)]">
-              {t('about.version')}: v0.3b
+              {t('about.version')}: v0.6
             </p>
             <p className="text-sm text-[var(--muted)] leading-relaxed">
               {t('about.description')}

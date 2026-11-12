@@ -24,18 +24,13 @@ function getAttendanceFileName(payload: AttendanceExportPayload, ext: string): s
   return `${parts.join('_').replace(/\s+/g, '_')}.${ext}`
 }
 
-function buildTitle(payload: AttendanceExportPayload): string {
-  const semLabel = payload.semester === 1 ? 'Sem I' : 'Sem II'
-  return [payload.schoolName, payload.className, 'Attendance', semLabel, payload.dateStr]
-    .filter((s): s is string => Boolean(s))
-    .join(' - ')
-}
-
 function buildHeaders(payload: AttendanceExportPayload): string[] {
   return ['NO', 'Student Name', ...payload.sessionHeaders, 'P', 'A', 'L', 'E']
 }
 
-function buildRow(payload: AttendanceExportPayload, student: AttendanceExportStudent): Array<string | number> {
+function buildRow(
+  student: AttendanceExportStudent,
+): Array<string | number> {
   return [
     student.serialNo,
     student.name,
@@ -82,7 +77,7 @@ function exportAttendanceCsv(payload: AttendanceExportPayload): void {
   const headers = buildHeaders(payload)
   const rows: Array<Array<string | number>> = [headers]
   for (const student of payload.students) {
-    rows.push(buildRow(payload, student))
+    rows.push(buildRow(student))
   }
 
   const csv = rows
@@ -150,7 +145,7 @@ function exportAttendanceXlsxWithLib(
   const headerCells = headers.map((label) => ({ v: label, t: 's', s: headerStyle }))
 
   const dataCells = payload.students.map((student) => {
-    const values = buildRow(payload, student)
+    const values = buildRow(student)
     return values.map((v, idx) => ({
       v,
       t: typeof v === 'number' ? 'n' : 's',
@@ -160,7 +155,7 @@ function exportAttendanceXlsxWithLib(
 
   const ws = XLSX.utils.aoa_to_sheet([headerCells, ...dataCells]) as import('xlsx-js-style').WorkSheet
 
-  // Column widths: NO/narrow, Name wider, date/PALE columns narrow
+  // Column widths: NO narrow, Name wider, date / PALE columns narrow
   const cols = headers.map((h) => {
     if (h === 'Student Name') return { wch: 24 }
     if (h === 'NO') return { wch: 5 }
@@ -211,11 +206,12 @@ function exportAttendancePdfWithLibs(
   // Title
   doc.setFontSize(13)
   doc.setTextColor(...hexToRgb(exportTheme.text))
-  doc.text(buildTitle(payload), marginLeft, 40)
+  const semLabel = payload.semester === 1 ? 'Sem I' : 'Sem II'
+  const titleParts = [payload.schoolName, payload.className, 'Attendance', semLabel, payload.dateStr]
+  doc.text(titleParts.filter(Boolean).join(' - '), marginLeft, 40)
 
-  // Column widths scale from on-screen px (48 + 150 + N*56 + 4*44) to printable width
-  const naturalWidth =
-    48 + 150 + payload.sessionHeaders.length * 56 + 4 * 44
+  // Column widths scale from on-screen px to the printable width
+  const naturalWidth = 48 + 150 + payload.sessionHeaders.length * 56 + 4 * 44
   const scale = printableWidth / naturalWidth
   const columnStyles: Record<number, { cellWidth: number; halign?: 'center' | 'left' }> = {
     0: { cellWidth: 48 * scale, halign: 'center' },
@@ -230,7 +226,9 @@ function exportAttendancePdfWithLibs(
   }
 
   const head = [buildHeaders(payload)]
-  const body = payload.students.map((s) => buildRow(payload, s).map((v) => (v === null || v === undefined ? '' : v)))
+  const body = payload.students.map((s) =>
+    buildRow(s).map((v) => (v === null || v === undefined ? '' : v)),
+  )
 
   autoTable(doc, {
     head,
