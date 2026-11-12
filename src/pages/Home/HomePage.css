@@ -1,0 +1,62 @@
+.home-panel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  padding: 24px 16px;
+}
+
+.home-launcher-card {
+  width: 100%;
+  max-width: 400px;
+  background: var(--surface, #ffffff);
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(11, 31, 92, 0.06), 0 1px 3px rgba(11, 31, 92, 0.04);
+  padding: 32px 24px;
+  text-align: center;
+}
+
+.home-launcher-icon {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--accent-soft, #E6EDFF);
+  color: var(--accent, #2F5BE0);
+}
+
+.home-launcher-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--navy, #0B1F5C);
+  margin: 0 0 8px;
+}
+
+.home-launcher-subtitle {
+  font-size: 0.92rem;
+  line-height: 1.45;
+  color: var(--muted, #5A6B8F);
+  margin: 0 0 24px;
+}
+
+.home-launcher-btn {
+  min-height: 44px;
+  padding: 0 24px;
+  background: var(--accent, #2F5BE0);
+  color: #ffffff;
+  border: none;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: transform 120ms ease, filter 120ms ease;
+}
+
+.home-launcher-btn:active { transform: scale(0.97); }
+.home-launcher-btn:focus-visible {
+  outline: 2px solid var(--accent, #2F5BE0);
+  outline-offset: 3px;
+}

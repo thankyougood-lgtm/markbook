@@ -102,6 +102,25 @@ class MarkBookDatabase extends Dexie {
     this.version(2).stores({
       attendanceSessions: '++id, classId, date, period, subjectId, archivedAt',
     })
+
+    // v0.4 hotfix: listRemarksForSemester and listScoresForSemester call
+    //   db.<table>.where('semester').equals(...)
+    // but 'semester' was only part of the compound primary key, not a
+    // standalone index. That query path throws DexieError at toArray().
+    // Add 'semester' as a real index on both tables. Pure index addition —
+    // no existing rows or fields are dropped.
+    this.version(3).stores({
+      studentSemesters: '[studentId+semester], remark, semester',
+      scores: '[studentId+semester+subjectId], value, semester',
+    })
+
+    // v0.4 hotfix 2: listAttendanceRecords calls
+    //   db.attendanceRecords.where('sessionId').anyOf(...)
+    // but 'sessionId' was only part of the compound primary key. Add it as
+    // a top-level index. Pure index addition — no data dropped.
+    this.version(4).stores({
+      attendanceRecords: '[sessionId+studentId], status, sessionId',
+    })
   }
 }
 

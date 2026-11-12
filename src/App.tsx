@@ -3,10 +3,11 @@ import en from './i18n/en.json'
 import am from './i18n/am.json'
 import om from './i18n/om.json'
 import { db } from './db/db'
-import * as classRepo from './db/repositories/classRepo'
 import * as settingsRepo from './db/repositories/settingsRepo'
 import { createSampleData } from './db/sampleData'
 import { AddRecordPage } from './pages/AddRecord/AddRecordPage'
+import { AttendancePage } from './pages/Attendance/AttendancePage'
+import { HomePage } from './pages/Home/HomePage'
 import './theme.css'
 
 type Language = 'en' | 'am' | 'om'
@@ -47,20 +48,11 @@ function App() {
     const saved = localStorage.getItem('markbook-theme')
     return saved === 'dark' ? 'dark' : 'light'
   })
-  const [classes, setClasses] = useState<Array<{ id?: number; name: string; openSemesters: number[] }>>([])
-  const [homeClassId, setHomeClassId] = useState<number | null>(null)
-  const [homeSemester, setHomeSemester] = useState<number>(1)
-  const [classesReady, setClassesReady] = useState(false)
   const [storageStatus, setStorageStatus] = useState({ supported: false, persisted: false })
 
   useEffect(() => {
     void db.open()
     void (async () => {
-      const records = await classRepo.listClasses()
-
-      setClasses(records.map((record) => ({ id: record.id, name: record.name, openSemesters: record.openSemesters ?? [1] })))
-      setClassesReady(true)
-
       const status = await settingsRepo.storageStatus()
       setStorageStatus(status)
       if (status.supported && !status.persisted) {
@@ -81,20 +73,6 @@ function App() {
     document.documentElement.lang = targetLang
     localStorage.setItem('markbook-language', language)
   }, [language])
-
-  useEffect(() => {
-    if (classes.length === 0) {
-      setHomeClassId(null)
-      setHomeSemester(1)
-      return
-    }
-
-    const nextClassId = homeClassId && classes.some((item) => item.id === homeClassId) ? homeClassId : classes[0]?.id ?? null
-    setHomeClassId(nextClassId)
-
-    const currentClass = classes.find((item) => item.id === nextClassId) ?? classes[0]
-    setHomeSemester(currentClass?.openSemesters?.[0] ?? 1)
-  }, [classes, homeClassId])
 
   useEffect(() => {
     const handleExportStatus = (event: Event) => {
@@ -277,65 +255,10 @@ function App() {
       </aside>
 
       <main className="content-area">
-        {page === 'home' && (
-          <section className="page-panel">
-            <div className="page-card home-card">
-              {!classesReady ? (
-                <div className="home-selector-row" aria-live="polite">
-                  <div className="select-wrap">
-                    <select id="home-class-select" value="" disabled aria-label={t('home.classLabel')}>
-                      <option value="">{t('home.classLabel')}</option>
-                    </select>
-                  </div>
-
-                  <div className="select-wrap">
-                    <select id="home-semester-select" value={1} disabled aria-label={t('home.semesterLabel')}>
-                      <option value={1}>{t('home.semesterLabel')}</option>
-                    </select>
-                  </div>
-                </div>
-              ) : classes.length > 0 ? (
-                <div className="home-selector-row">
-                  <div className="select-wrap">
-                    <select
-                      id="home-class-select"
-                      value={homeClassId ?? ''}
-                      onChange={(event) => setHomeClassId(Number(event.target.value) || null)}
-                      aria-label={t('home.classLabel')}
-                    >
-                      {classes.map((item) => (
-                        <option key={item.id} value={item.id ?? ''}>
-                          {item.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="select-wrap">
-                    <select
-                      id="home-semester-select"
-                      value={homeSemester}
-                      onChange={(event) => setHomeSemester(Number(event.target.value))}
-                      aria-label={t('home.semesterLabel')}
-                    >
-                      <option value={1}>{t('semester.i')}</option>
-                      <option value={2}>{t('semester.ii')}</option>
-                    </select>
-                  </div>
-                </div>
-              ) : (
-                <p className="home-empty">
-                  <button type="button" className="home-empty-link" onClick={() => setPage('addRecord')}>
-                    {t('home.empty')}
-                  </button>
-                </p>
-              )}
-            </div>
-          </section>
-        )}
+        {page === 'home' && <HomePage onOpenAddRecord={() => setPage('addRecord')} t={t} />}
 
         {page === 'addRecord' && <AddRecordPage />}
-        {page === 'attendance' && renderPlaceholderPage('attendance')}
+        {page === 'attendance' && <AttendancePage />}
         {page === 'analytics' && renderPlaceholderPage('analytics')}
 
         {page === 'settings' && (
@@ -369,7 +292,13 @@ function App() {
 
               <div className="setting-row stacked">
                 <label>Storage</label>
-                <span className="setting-status">{storageStatus.supported ? (storageStatus.persisted ? 'Persisted' : 'Not persisted') : 'Unsupported'}</span>
+                <span className="setting-status">
+                  {storageStatus.supported
+                    ? storageStatus.persisted
+                      ? 'Persisted'
+                      : 'Not persisted'
+                    : 'Unsupported'}
+                </span>
               </div>
 
               {import.meta.env.DEV && (
@@ -378,8 +307,6 @@ function App() {
                   className="sample-button"
                   onClick={async () => {
                     await createSampleData()
-                    const records = await classRepo.listClasses()
-                    setClasses(records.map((record) => ({ id: record.id, name: record.name, openSemesters: record.openSemesters ?? [1] })))
                   }}
                 >
                   Create sample data

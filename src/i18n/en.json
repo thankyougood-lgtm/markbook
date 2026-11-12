@@ -87,5 +87,8 @@
   "attendance.saved": "Saved",
   "attendance.saving": "Saving...",
   "attendance.retry": "Not saved, tap to retry",
-  "attendance.empty": "No class yet. Create one in Add Record."
+  "attendance.empty": "No class yet. Create one in Add Record.",
+  "home.startTitle": "Ready to record?",
+  "home.startSubtitle": "Create or open a class in Add Record to start entering marks.",
+  "home.goToAddRecord": "Open Add Record"
 }
