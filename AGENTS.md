@@ -29,3 +29,24 @@ Stack: React 18, TypeScript strict, Vite, Tailwind plus plain CSS, Dexie.
 At the end, give: changed files, how to run, a pass/fail checklist, open
 questions. Say plainly which checks you could not run (for example browser
 screenshots). Never claim a check passed if you did not run it.
+
+## Data Persistence Rules (learned from bugs)
+
+### Dexie queries — `.keys()` vs `.primaryKeys()`
+After `.where(...)`, `Collection.keys()` returns the **INDEX keys** (for example the `classId` repeated for every row), NOT the row primary keys. Use `.primaryKeys()` when you need the actual row ids.
+- Any repository query that returns more than one row **must** have a test with at least 3 rows and different IDs. A test with only one row cannot detect this bug.
+- Golden rule: if you're building a `Set` of IDs to filter another table, always use `.primaryKeys()`.
+- Do NOT rely on `.filter(...).keys()` — the combination is especially prone to returning wrong values.
+
+### Add Record page — save behavior
+- Every edit is written to IndexedDB immediately (as the user types). Never keep typed data only in React state.
+- "Saved" indicator may only show after the database write has resolved. Never show "Saved" optimistically.
+- If a write fails, show "Not saved" and log the error to the console. Never swallow write errors.
+- Tests must cover:
+  - Typing 3 students + 3 marks, saving, reloading, all 6 values survive.
+  - Typing a mark and pressing `F5` immediately (before blur/next tick), the mark survives.
+
+### React Strict Mode
+- All load `useEffect` hooks must use an `isCurrent` flag to prevent stale async responses from overwriting fresh state.
+- But the `isCurrent` flag must be returned from the `useEffect`, not assigned after.
+- Never wipe state (`setScores({})`, `setStudents([])`) in an early return that fires before the data has loaded.
