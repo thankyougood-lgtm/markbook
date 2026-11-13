@@ -1737,3 +1737,10 @@ select {
   outline: 2px solid var(--primary);
   outline-offset: -2px;
 }
+
+/* Retry state for the save button */
+.merged-save-btn.retry {
+  background: rgba(230, 73, 75, 0.1);
+  color: var(--danger);
+  border-color: var(--danger);
+}

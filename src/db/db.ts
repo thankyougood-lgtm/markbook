@@ -1,7 +1,6 @@
 import Dexie, { type Table } from 'dexie'
 
 export type Semester = 1 | 2
-
 export type ScoreKind = 'score' | 'text' | 'number' | 'dropdown'
 export type ScoreValue = number | string | null
 
@@ -86,40 +85,17 @@ class MarkBookDatabase extends Dexie {
 
   constructor() {
     super('markbook')
-
-    this.version(1).stores({
-      classes: '++id, name, grade, section, academicYear, createdAt, archivedAt, schoolName, teacherName',
-      subjects: '++id, classId, name, maxScore, order, archivedAt, kind',
-      students: '++id, classId, serialNo, fullName, sex, age, order, archivedAt',
-      studentSemesters: '[studentId+semester], remark',
-      scores: '[studentId+semester+subjectId], value',
-      attendanceSessions: '++id, classId, date, period, subjectId',
-      attendanceRecords: '[sessionId+studentId], status',
+    
+    // SINGLE VERSION - CLEAN SLATE
+    this.version(10).stores({
+      classes: '++id, name, grade, section, academicYear, createdAt, archivedAt',
+      subjects: '++id, classId, name, order, archivedAt',
+      students: '++id, classId, order, archivedAt',
+      studentSemesters: '[studentId+semester], semester',
+      scores: '[studentId+semester+subjectId], semester, subjectId',
+      attendanceSessions: '++id, classId, date, archivedAt',
+      attendanceRecords: '[sessionId+studentId], sessionId',
       settings: '&key',
-    })
-
-    // v0.4: add archivedAt to attendanceSessions for soft-delete
-    this.version(2).stores({
-      attendanceSessions: '++id, classId, date, period, subjectId, archivedAt',
-    })
-
-    // v0.4 hotfix: listRemarksForSemester and listScoresForSemester call
-    //   db.<table>.where('semester').equals(...)
-    // but 'semester' was only part of the compound primary key, not a
-    // standalone index. That query path throws DexieError at toArray().
-    // Add 'semester' as a real index on both tables. Pure index addition —
-    // no existing rows or fields are dropped.
-    this.version(3).stores({
-      studentSemesters: '[studentId+semester], remark, semester',
-      scores: '[studentId+semester+subjectId], value, semester',
-    })
-
-    // v0.4 hotfix 2: listAttendanceRecords calls
-    //   db.attendanceRecords.where('sessionId').anyOf(...)
-    // but 'sessionId' was only part of the compound primary key. Add it as
-    // a top-level index. Pure index addition — no data dropped.
-    this.version(4).stores({
-      attendanceRecords: '[sessionId+studentId], status, sessionId',
     })
   }
 }

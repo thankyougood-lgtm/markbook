@@ -13,16 +13,21 @@ export async function getScore(input: Omit<SetScoreInput, 'value'>): Promise<Sco
 }
 
 export async function listScoresForSemester(classId: number, semester: 1 | 2) {
-  const classStudentIds = new Set((await db.students.where('classId').equals(classId).filter((student) => !student.archivedAt).keys()) as number[])
-  const subjectIds = new Set((await db.subjects.where('classId').equals(classId).filter((subject) => !subject.archivedAt).keys()) as number[])
+  const classStudentIds = new Set(
+    (await db.students.where('classId').equals(classId).filter((student) => !student.archivedAt).keys()) as number[],
+  )
+  const subjectIds = new Set(
+    (await db.subjects.where('classId').equals(classId).filter((subject) => !subject.archivedAt).keys()) as number[],
+  )
 
   const map: Record<number, Record<number, ScoreValue>> = {}
+  
+  // Query by semester using the compound index prefix
   const rows = await db.scores.where('semester').equals(semester).toArray()
 
   for (const row of rows) {
-    if (!classStudentIds.has(row.studentId) || !subjectIds.has(row.subjectId)) {
-      continue
-    }
+    if (!classStudentIds.has(row.studentId)) continue
+    if (!subjectIds.has(row.subjectId)) continue
 
     map[row.studentId] ??= {}
     map[row.studentId][row.subjectId] = row.value
@@ -32,8 +37,6 @@ export async function listScoresForSemester(classId: number, semester: 1 | 2) {
 }
 
 export async function setScore(input: SetScoreInput): Promise<ScoreRow> {
-  console.log('DEXIE SETSCORE:', input)
-  if (!input.subjectId) { console.error('DEXIE ERROR: subjectId is undefined!'); return {} as any; }
   const rawValue = input.value === '' || input.value === null ? null : input.value
   const nextValue = typeof rawValue === 'string' ? (rawValue.trim() === '' ? null : rawValue) : rawValue
 

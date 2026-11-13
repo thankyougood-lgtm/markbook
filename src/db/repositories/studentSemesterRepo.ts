@@ -10,11 +10,6 @@ export async function getStudentSemester(studentId: number, semester: 1 | 2): Pr
   return (await db.studentSemesters.get([studentId, semester])) ?? null
 }
 
-export async function getRemark(input: { studentId: number; semester: 1 | 2 }): Promise<string | null> {
-  const record = await getStudentSemester(input.studentId, input.semester)
-  return record?.remark ?? null
-}
-
 export async function setRemark(input: StudentSemesterInput): Promise<StudentSemesterRow> {
   const current = await getStudentSemester(input.studentId, input.semester)
   const nextRemark = input.remark === '' || input.remark == null ? null : input.remark.trim() === '' ? null : input.remark.trim()
@@ -34,15 +29,11 @@ export async function listRemarksForSemester(classId: number, semester: 1 | 2): 
   const studentIds = new Set(
     (await db.students.where('classId').equals(classId).filter((student) => !student.archivedAt).keys()) as number[],
   )
-
   const result: Record<number, string | null> = {}
-
+  
   const rows = await db.studentSemesters.where('semester').equals(semester).toArray()
   for (const row of rows) {
-    if (!studentIds.has(row.studentId)) {
-      continue
-    }
-
+    if (!studentIds.has(row.studentId)) continue
     result[row.studentId] = row.remark ?? null
   }
 
