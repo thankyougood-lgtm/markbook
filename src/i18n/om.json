@@ -54,8 +54,8 @@
   "addRecord.remark": "Yaada",
   "addRecord.emptySheet": "Sabakaa hin filatamne",
   "addRecord.classDialogTitle": "Kutaa uumi",
-  "addRecord.school": "Maqaa manaa barnootaa",
-  "addRecord.grade": "Kutaalee",
+  "addRecord.school": "Mana barumsaa / Yuunivarsiitii / Kolleejjii",
+  "addRecord.grade": "Kutaa / Waggaa",
   "addRecord.section": "Qajeelfama",
   "addRecord.semester": "Semisterii",
   "addRecord.year": "Waggaa barnootaa",
@@ -63,7 +63,7 @@
   "addRecord.confirmDeleteStudent": "Barattuu kana arkuu?",
   "addRecord.confirmDeleteSubject": "Sadarkaa kana arkuu?",
   "addRecord.importError": "Maqaan sirrii barbaachisa",
-  "addRecord.subjectPrompt": "Maqaa barnootaa",
+  "addRecord.subjectPrompt": "Maqaa",
   "addRecord.subjectMax": "Dubbii ol'aanaa",
   "addRecord.defaultYear": "2018 EC",
   "addRecord.sheetLabel": "Sem",
@@ -143,5 +143,12 @@
   "settings.storage.unsupported": "Hin deeggaru",
   "settings.dev.title": "Meeshaalee qopheessaa",
   "settings.dev.sample": "Odeeffannoo fakkeenyaa uumi",
-  "settings.sample.done": "Odeeffannoon fakkeenyaa uumame."
+  "settings.sample.done": "Odeeffannoon fakkeenyaa uumame.",
+  "addRecord.addAssess": "+ Madaallii / Barnoota",
+  "addRecord.columnType": "Gosa",
+  "addRecord.typeScore": "Qabxii",
+  "addRecord.typeText": "Barruu",
+  "addRecord.typeNumber": "Lakkoofsa",
+  "addRecord.typeDropdown": "Tarreeffama",
+  "addRecord.maxScore": "Qabxii ol'aanaa"
 }

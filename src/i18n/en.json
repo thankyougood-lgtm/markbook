@@ -54,8 +54,8 @@
   "addRecord.remark": "Remark",
   "addRecord.emptySheet": "No sheet selected",
   "addRecord.classDialogTitle": "Create class",
-  "addRecord.school": "School name",
-  "addRecord.grade": "Grade",
+  "addRecord.school": "School / University / College",
+  "addRecord.grade": "Grade / Year",
   "addRecord.section": "Section",
   "addRecord.semester": "Semester",
   "addRecord.year": "Academic year",
@@ -63,7 +63,7 @@
   "addRecord.confirmDeleteStudent": "Archive this student?",
   "addRecord.confirmDeleteSubject": "Archive this column?",
   "addRecord.importError": "A valid name is required",
-  "addRecord.subjectPrompt": "Subject name",
+  "addRecord.subjectPrompt": "Name",
   "addRecord.subjectMax": "Max score",
   "addRecord.defaultYear": "2018 EC",
   "addRecord.sheetLabel": "Sem",
@@ -143,5 +143,12 @@
   "settings.storage.unsupported": "Unsupported",
   "settings.dev.title": "Developer tools",
   "settings.dev.sample": "Create sample data",
-  "settings.sample.done": "Sample data created."
+  "settings.sample.done": "Sample data created.",
+  "addRecord.addAssess": "+ Assess / Course",
+  "addRecord.columnType": "Type",
+  "addRecord.typeScore": "Score",
+  "addRecord.typeText": "Text",
+  "addRecord.typeNumber": "Number",
+  "addRecord.typeDropdown": "Dropdown",
+  "addRecord.maxScore": "Max score"
 }

@@ -1,51 +1,58 @@
 .home-panel {
+  min-height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 60vh;
-  padding: 24px 16px;
+  padding: 24px 16px calc(var(--bottom-nav-height) + var(--safe-area-bottom) + 24px);
 }
 
 .home-launcher-card {
+  box-sizing: border-box;
   width: 100%;
   max-width: 400px;
-  background: var(--surface, #ffffff);
+  background: var(--surface);
   border-radius: 16px;
-  box-shadow: 0 4px 16px rgba(11, 31, 92, 0.06), 0 1px 3px rgba(11, 31, 92, 0.04);
+  box-shadow: var(--shadow);
   padding: 32px 24px;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
 }
 
 .home-launcher-icon {
   width: 64px;
   height: 64px;
-  margin: 0 auto 16px;
+  margin-bottom: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: var(--accent-soft, #E6EDFF);
-  color: var(--accent, #2F5BE0);
+  background: var(--primary-soft);
+  color: var(--primary);
 }
 
 .home-launcher-title {
+  margin: 0;
   font-size: 1.15rem;
   font-weight: 700;
-  color: var(--navy, #0B1F5C);
-  margin: 0 0 8px;
+  line-height: 1.3;
+  color: var(--navy);
 }
 
 .home-launcher-subtitle {
+  margin: 0 0 16px;
   font-size: 0.92rem;
   line-height: 1.45;
-  color: var(--muted, #5A6B8F);
-  margin: 0 0 24px;
+  color: var(--muted);
+  max-width: 32ch;
 }
 
 .home-launcher-btn {
   min-height: 44px;
   padding: 0 24px;
-  background: var(--accent, #2F5BE0);
+  background: var(--primary);
   color: #ffffff;
   border: none;
   border-radius: 999px;
@@ -55,8 +62,21 @@
   transition: transform 120ms ease, filter 120ms ease;
 }
 
-.home-launcher-btn:active { transform: scale(0.97); }
+.home-launcher-btn:hover {
+  filter: brightness(1.05);
+}
+
+.home-launcher-btn:active {
+  transform: scale(0.97);
+}
+
 .home-launcher-btn:focus-visible {
-  outline: 2px solid var(--accent, #2F5BE0);
+  outline: 2px solid var(--primary);
   outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-launcher-btn {
+    transition: none;
+  }
 }

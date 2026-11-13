@@ -582,10 +582,13 @@ export function AttendancePage() {
           <div className="record-toolbar" aria-label="Attendance actions">
             <button
               type="button"
-              className="toolbar-button primary-button"
+              className="toolbar-button primary-button icon-button"
               onClick={() => setSessionDialog({ mode: 'add' })}
             >
-              {getText('attendance.addSession')}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              <span>{getText('attendance.addSession')}</span>
             </button>
             {sessionCountText && <span className="session-count-badge">{sessionCountText}</span>}
           </div>
@@ -620,7 +623,23 @@ export function AttendancePage() {
                   {activeStudents.map((student, index) => (
                     <tr key={student.id}>
                       <td className="att-no">{index + 1}</td>
-                      <td className="att-name">{student.fullName}</td>
+                      <td className="att-name">
+                      <input
+                        className="inline-grid-input"
+                        value={student.fullName}
+                        onChange={(e) => {
+                          const newName = e.target.value
+                          setStudents((prev) =>
+                            prev.map((s) => (s.id === student.id ? { ...s, fullName: newName } : s))
+                          )
+                        }}
+                        onBlur={async (e) => {
+                          if (student.id) {
+                            await studentRepo.updateStudent({ ...student, fullName: e.target.value })
+                          }
+                        }}
+                      />
+                    </td>
                       <td className="att-summary att-p">0</td>
                       <td className="att-summary att-a">0</td>
                       <td className="att-summary att-l">0</td>
@@ -700,7 +719,23 @@ export function AttendancePage() {
                     return (
                       <tr key={studentId}>
                         <td className="att-no">{rowIdx + 1}</td>
-                        <td className="att-name">{student.fullName}</td>
+                        <td className="att-name">
+                      <input
+                        className="inline-grid-input"
+                        value={student.fullName}
+                        onChange={(e) => {
+                          const newName = e.target.value
+                          setStudents((prev) =>
+                            prev.map((s) => (s.id === student.id ? { ...s, fullName: newName } : s))
+                          )
+                        }}
+                        onBlur={async (e) => {
+                          if (student.id) {
+                            await studentRepo.updateStudent({ ...student, fullName: e.target.value })
+                          }
+                        }}
+                      />
+                    </td>
                         {activeSessions.map((session, colIdx) => {
                           const status = records[`${session.id}:${studentId}`]
                           const isActiveCol = activeCell?.col === colIdx

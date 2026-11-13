@@ -32,6 +32,8 @@ export async function listScoresForSemester(classId: number, semester: 1 | 2) {
 }
 
 export async function setScore(input: SetScoreInput): Promise<ScoreRow> {
+  console.log('DEXIE SETSCORE:', input)
+  if (!input.subjectId) { console.error('DEXIE ERROR: subjectId is undefined!'); return {} as any; }
   const rawValue = input.value === '' || input.value === null ? null : input.value
   const nextValue = typeof rawValue === 'string' ? (rawValue.trim() === '' ? null : rawValue) : rawValue
 

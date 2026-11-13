@@ -54,8 +54,8 @@
   "addRecord.remark": "ማስታወሻ",
   "addRecord.emptySheet": "ምንም ሉህ አልተመረጠም",
   "addRecord.classDialogTitle": "ክፍል ፍጠር",
-  "addRecord.school": "ት/ቤት ስም",
-  "addRecord.grade": " grade",
+  "addRecord.school": "ትምህርት ቤት / ዩኒቨርሲቲ / ኮሌጅ",
+  "addRecord.grade": "ክፍል / ዓመት",
   "addRecord.section": "ክፍል",
   "addRecord.semester": "ሴሚስተር",
   "addRecord.year": "በመምህር ዓመት",
@@ -63,7 +63,7 @@
   "addRecord.confirmDeleteStudent": "ይህን ተማሪ አስወግድ?",
   "addRecord.confirmDeleteSubject": "ይህን አምድ አስወግድ?",
   "addRecord.importError": "ትክክለኛ ስም ያስፈልጋል",
-  "addRecord.subjectPrompt": "የትምህርት ስም",
+  "addRecord.subjectPrompt": "ስም",
   "addRecord.subjectMax": "ከፍተኛ ነጥብ",
   "addRecord.defaultYear": "2018 ኢ.አ.",
   "addRecord.sheetLabel": "ሴሚ",
@@ -143,5 +143,12 @@
   "settings.storage.unsupported": "የማይደገፍ",
   "settings.dev.title": "የገንቢ መሣሪያዎች",
   "settings.dev.sample": "ናሙና ውሂብ ፍጠር",
-  "settings.sample.done": "ናሙና ውሂብ ተፈጥሯል።"
+  "settings.sample.done": "ናሙና ውሂብ ተፈጥሯል።",
+  "addRecord.addAssess": "+ ምዘና / ትምህርት",
+  "addRecord.columnType": "ዓይነት",
+  "addRecord.typeScore": "ውጤት",
+  "addRecord.typeText": "ጽሑፍ",
+  "addRecord.typeNumber": "ቁጥር",
+  "addRecord.typeDropdown": "ዝርዝር",
+  "addRecord.maxScore": "ከፍተኛ ውጤት"
 }

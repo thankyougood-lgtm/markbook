@@ -69,7 +69,6 @@ function exportRosterCsv(payload: RosterPayload): void {
     'Total',
     'Avg %',
     'Rank',
-    'Remark',
   ]
 
   const rows: Array<Array<string | number>> = [headers]
@@ -86,7 +85,6 @@ function exportRosterCsv(payload: RosterPayload): void {
       student.total,
       student.average !== null ? student.average : '',
       student.rank !== null ? student.rank : '',
-      student.remark,
     ])
   }
 
@@ -206,7 +204,6 @@ function exportRosterXlsx(
     { v: 'Total', t: 's', s: headerStyle },
     { v: 'Avg %', t: 's', s: headerStyle },
     { v: 'Rank', t: 's', s: headerStyle },
-    { v: 'Remark', t: 's', s: headerStyle },
   ]
   aoa.push(headerRow)
 
@@ -240,7 +237,6 @@ function exportRosterXlsx(
         t: student.rank !== null ? 'n' : 's',
         s: rowStyle,
       },
-      { v: student.remark, t: 's', s: rowStyle },
     ]
     aoa.push(cells)
   })
@@ -278,7 +274,6 @@ function exportRosterXlsx(
   cols.push({ wch: 8 })   // Total
   cols.push({ wch: 8 })   // Avg %
   cols.push({ wch: 6 })   // Rank
-  cols.push({ wch: 14 })  // Remark
   ws['!cols'] = cols
 
   const wb = XLSX.utils.book_new()
@@ -347,7 +342,6 @@ function exportRosterPdf(
     'Total',
     'Avg %',
     'Rank',
-    'Remark',
   ]
 
   const body = payload.students.map((student) => [
@@ -362,11 +356,10 @@ function exportRosterPdf(
     String(student.total),
     student.average !== null ? student.average.toFixed(1) : '',
     student.rank !== null ? String(student.rank) : '',
-    student.remark,
   ])
 
   // Column widths scaled to fit printable width
-  const naturalWidth = 30 + 120 + 30 + 30 + payload.subjects.length * 50 + 40 + 40 + 40 + 80
+  const naturalWidth = 30 + 120 + 30 + 30 + payload.subjects.length * 50 + 40 + 40 + 40
   const printableWidth = pageWidth - marginLeft - marginRight
   const scale = printableWidth / naturalWidth
   const columnStyles: Record<number, { cellWidth: number; halign?: 'left' | 'center' }> = {
@@ -383,7 +376,6 @@ function exportRosterPdf(
   columnStyles[summaryStart] = { cellWidth: 40 * scale, halign: 'center' }
   columnStyles[summaryStart + 1] = { cellWidth: 40 * scale, halign: 'center' }
   columnStyles[summaryStart + 2] = { cellWidth: 40 * scale, halign: 'center' }
-  columnStyles[summaryStart + 3] = { cellWidth: 80 * scale, halign: 'left' }
 
   autoTable(doc, {
     head: [headers],
