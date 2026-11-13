@@ -26,14 +26,16 @@ export async function setRemark(input: StudentSemesterInput): Promise<StudentSem
 }
 
 export async function listRemarksForSemester(classId: number, semester: 1 | 2): Promise<Record<number, string | null>> {
-  const studentIds = new Set(
-    (await db.students.where('classId').equals(classId).filter((student) => !student.archivedAt).keys()) as number[],
+  const allStudents = await db.students.where('classId').equals(classId).toArray()
+  const classStudentIds = new Set(
+    allStudents.filter((s) => !s.archivedAt).map((s) => s.id as number)
   )
+
+  const allRows = await db.studentSemesters.where('semester').equals(semester).toArray()
   const result: Record<number, string | null> = {}
-  
-  const rows = await db.studentSemesters.where('semester').equals(semester).toArray()
-  for (const row of rows) {
-    if (!studentIds.has(row.studentId)) continue
+
+  for (const row of allRows) {
+    if (!classStudentIds.has(row.studentId)) continue
     result[row.studentId] = row.remark ?? null
   }
 

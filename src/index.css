@@ -1744,3 +1744,21 @@ select {
   color: var(--danger);
   border-color: var(--danger);
 }
+
+/* Fix the table layout so the NO column is fully visible */
+.spreadsheet-shell {
+  padding-left: 8px !important;
+}
+
+.spreadsheet-table .row-index {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+}
+
+.spreadsheet-table th.row-index {
+  background: var(--surface-alt);
+  z-index: 3;
+}

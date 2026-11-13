@@ -20,7 +20,14 @@ export async function createStudent(input: CreateStudentInput): Promise<StudentR
   }
 
   const order = input.order ?? (await db.students.where('classId').equals(input.classId).count())
+
+  // Force unique id manually in case ++id auto-increment is not working
+  const allStudents = await db.students.toArray()
+  const maxId = allStudents.reduce((max, s) => Math.max(max, s.id ?? 0), 0)
+  const id = maxId + 1
+
   const record: StudentRow = {
+    id,
     classId: input.classId,
     serialNo: input.serialNo,
     fullName: trimmed,
@@ -30,8 +37,8 @@ export async function createStudent(input: CreateStudentInput): Promise<StudentR
     archivedAt: null,
   }
 
-  const id = (await db.students.add(record)) as number
-  return { ...record, id }
+  await db.students.add(record)
+  return record as StudentRow & { id: number }
 }
 
 export async function updateStudent(student: StudentRow) {
