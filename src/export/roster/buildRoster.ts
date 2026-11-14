@@ -1,8 +1,4 @@
-
-export interface RosterSubject {
-  id: number | string
-  label: string
-}
+import type { RosterSubjectMap } from './autoMapSubjects'
 
 export interface RosterStudent {
   id: number
@@ -13,13 +9,13 @@ export interface RosterStudent {
 
 export interface StudentMark {
   studentId: number
-  subjectLabel: string
+  subjectId: number
   value: number | null
 }
 
 export interface BuildRosterInput {
   students: RosterStudent[]
-  subjects: RosterSubject[]
+  rosterSubjects: RosterSubjectMap[]
   sem1Marks: StudentMark[]
   sem2Marks: StudentMark[]
   attendanceAbsents: Record<number, number | null>
@@ -29,13 +25,13 @@ export interface BuildRosterInput {
 
 export interface RosterRow {
   semester: 'I' | 'II' | 'AV'
-  subjectValues: Record<string, number | null>
+  subjectValues: Record<string, number | null> // keyed by rosterSubject.key
   total: number | null
   average: number | null
   rank: number | null
-  conduct: string
+  conduct: string | null
   absents: number | null
-  remark: string
+  remark: string | null
 }
 
 export interface RosterStudentBlock {
@@ -48,123 +44,75 @@ export interface RosterStudentBlock {
 }
 
 export interface RosterModel {
-  subjects: string[]
+  subjects: RosterSubjectMap[]
   students: RosterStudentBlock[]
-  warnings: {
-    textInSubjectCells: number
-    unmatchedRows: number
-  }
 }
 
 const AV_MISSING_AS_BLANK = true
 
-function indexMarks(marks: StudentMark[]): Record<number, Record<string, number | null>> {
-  const out: Record<number, Record<string, number | null>> = {}
-  for (const m of marks) {
-    if (!out[m.studentId]) out[m.studentId] = {}
-    if (typeof m.value === 'number' && Number.isFinite(m.value)) {
-      out[m.studentId][m.subjectLabel] = m.value
-    } else {
-      out[m.studentId][m.subjectLabel] = null
-    }
-  }
-  return out
-}
-
-function buildRow(
-  semester: 'I' | 'II' | 'AV',
-  subjectLabels: string[],
-  valsForRow: Record<string, number | null>,
-  conductValue: string,
-  absentsValue: number | null,
-  remarkValue: string,
-): RosterRow {
-  const subjectValues: Record<string, number | null> = {}
-  let total = 0
-  let hasMarks = false
-  let enteredSubjects = 0
-
-  for (const sub of subjectLabels) {
-    const v = valsForRow[sub]
-    if (typeof v === 'number' && Number.isFinite(v)) {
-      const rounded = Math.round(v * 100) / 100
-      subjectValues[sub] = rounded
-      total += rounded
-      hasMarks = true
-      enteredSubjects++
-    } else {
-      subjectValues[sub] = null
-    }
-  }
-
-  const average = hasMarks && enteredSubjects > 0
-    ? Math.round(total / enteredSubjects)
-    : null
-
-  return {
-    semester,
-    subjectValues,
-    total: hasMarks ? total : null,
-    average,
-    rank: null,
-    conduct: conductValue,
-    absents: absentsValue,
-    remark: remarkValue,
-  }
-}
-
 export function buildRoster(input: BuildRosterInput): RosterModel {
-  const subjectLabels = input.subjects.map((s) => s.label)
-  const warnings = { textInSubjectCells: 0, unmatchedRows: 0 }
+  // 1. Index marks by studentId -> subjectId -> value
+  const sem1Index: Record<number, Record<number, number | null>> = {}
+  for (const m of input.sem1Marks) {
+    sem1Index[m.studentId] ??= {}
+    sem1Index[m.studentId][m.subjectId] = m.value
+  }
+  const sem2Index: Record<number, Record<number, number | null>> = {}
+  for (const m of input.sem2Marks) {
+    sem2Index[m.studentId] ??= {}
+    sem2Index[m.studentId][m.subjectId] = m.value
+  }
 
-  const sem1Map = indexMarks(input.sem1Marks)
-  const sem2Map = indexMarks(input.sem2Marks)
-
+  // 2. Build rows
   const blocks: RosterStudentBlock[] = input.students.map((student, index) => {
-    const s1 = sem1Map[student.id] || {}
-    const s2 = sem2Map[student.id] || {}
+    const s1 = sem1Index[student.id] || {}
+    const s2 = sem2Index[student.id] || {}
 
-    // I row uses s1 directly
-    const rowI = buildRow(
-      'I',
-      subjectLabels,
-      s1,
-      input.conduct[student.id] || '',
-      null,
-      '',
-    )
+    const buildRow = (type: 'I' | 'II' | 'AV'): RosterRow => {
+      const subjectValues: Record<string, number | null> = {}
+      let total = 0
+      let hasMarks = false
+      let enteredSubjects = 0
 
-    // II row uses s2 directly
-    const rowII = buildRow(
-      'II',
-      subjectLabels,
-      s2,
-      input.conduct[student.id] || '',
-      null,
-      '',
-    )
+      for (const sub of input.rosterSubjects) {
+        let val: number | null = null
+        
+        if (type === 'I' && sub.sem1SubjectId) {
+          val = s1[sub.sem1SubjectId] ?? null
+        } else if (type === 'II' && sub.sem2SubjectId) {
+          val = s2[sub.sem2SubjectId] ?? null
+        } else if (type === 'AV') {
+          const v1 = sub.sem1SubjectId ? s1[sub.sem1SubjectId] : null
+          const v2 = sub.sem2SubjectId ? s2[sub.sem2SubjectId] : null
+          if (typeof v1 === 'number' && typeof v2 === 'number') {
+            val = (v1 + v2) / 2
+          } else if (!AV_MISSING_AS_BLANK) {
+            // ... (not doing this as per prompt)
+          }
+        }
 
-    // AV row: per-subject average of I and II
-    const avVals: Record<string, number | null> = {}
-    for (const sub of subjectLabels) {
-      const v1 = s1[sub]
-      const v2 = s2[sub]
-      if (typeof v1 === 'number' && typeof v2 === 'number') {
-        avVals[sub] = (v1 + v2) / 2
-      } else if (!AV_MISSING_AS_BLANK && (typeof v1 === 'number' || typeof v2 === 'number')) {
-        avVals[sub] = ((v1 ?? 0) + (v2 ?? 0)) / 2
-      } else {
-        avVals[sub] = null
+        if (val !== null) {
+          val = Math.round(val * 100) / 100
+          subjectValues[sub.key] = val
+          total += val
+          hasMarks = true
+          enteredSubjects++
+        } else {
+          subjectValues[sub.key] = null
+        }
+      }
+
+      return {
+        semester: type,
+        subjectValues,
+        total: hasMarks ? total : null,
+        average: hasMarks && enteredSubjects > 0 ? Math.round(total / enteredSubjects) : null,
+        rank: null, // calculated later
+        conduct: type === 'AV' ? null : (input.conduct[student.id] || null),
+        absents: type === 'AV' ? (input.attendanceAbsents[student.id] ?? null) : null,
+        remark: type === 'AV' ? (input.remarks[student.id] || null) : null
       }
     }
-    const rowAV = buildRow(
-      'AV',
-      subjectLabels,
-      avVals,
-      '', // conduct blank on AV
-      input.attendanceAbsents[student.id] ?? null,
-      input.remarks[student.id] || '',
-    )
 
     return {
       no: index + 1,
@@ -172,35 +120,50 @@ export function buildRoster(input: BuildRosterInput): RosterModel {
       name: student.fullName,
       sex: student.sex || '',
       age: student.age != null ? String(student.age) : '',
-      rows: [rowI, rowII, rowAV],
+      rows: [buildRow('I'), buildRow('II'), buildRow('AV')]
     }
   })
 
-  // Ranks per semester type
+  // 3. Calculate ranks (strictly greater unrounded average)
   const types: ('I' | 'II' | 'AV')[] = ['I', 'II', 'AV']
   for (const type of types) {
-    const averages = blocks
-      .map((b) => {
-        const r = b.rows.find((row) => row.semester === type)
-        return { studentId: b.studentId, average: r?.average ?? null }
-      })
-      .filter((x): x is { studentId: number; average: number } => x.average !== null)
-      .sort((a, b) => b.average - a.average)
+    const withMarks = blocks.filter(b => {
+      const r = b.rows.find(row => row.semester === type)
+      return r && r.total !== null && r.average !== null // we have a mark
+    })
+
+    // Sort by unrounded average (total / entered)
+    // Actually, we must use the precise unrounded average.
+    // Since `average` is rounded, we need to recompute it from the subject values.
+    const avgs = withMarks.map(b => {
+      const r = b.rows.find(row => row.semester === type)!
+      let sum = 0
+      let count = 0
+      for (const sub of input.rosterSubjects) {
+        const v = r.subjectValues[sub.key]
+        if (typeof v === 'number') {
+          sum += v
+          count++
+        }
+      }
+      const unrounded = sum / count
+      return { block: b, unrounded }
+    })
+
+    avgs.sort((a, b) => b.unrounded - a.unrounded)
 
     let currentRank = 1
-    for (let i = 0; i < averages.length; i++) {
-      if (i > 0 && averages[i].average !== averages[i - 1].average) {
+    for (let i = 0; i < avgs.length; i++) {
+      if (i > 0 && Math.abs(avgs[i].unrounded - avgs[i-1].unrounded) > 1e-9) {
         currentRank = i + 1
       }
-      const block = blocks.find((b) => b.studentId === averages[i].studentId)
-      const row = block?.rows.find((r) => r.semester === type)
-      if (row) row.rank = currentRank
+      const row = avgs[i].block.rows.find(r => r.semester === type)!
+      row.rank = currentRank
     }
   }
 
   return {
-    subjects: subjectLabels,
-    students: blocks,
-    warnings,
+    subjects: input.rosterSubjects,
+    students: blocks
   }
 }

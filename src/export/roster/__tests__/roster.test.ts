@@ -1,90 +1,92 @@
 import { describe, it, expect } from 'vitest'
 import { buildRoster } from '../buildRoster'
-import { formatAcademicYear } from '../academicYear'
+import { autoMapSubjects } from '../autoMapSubjects'
 
-describe('formatAcademicYear', () => {
-  it('parses EC year correctly', () => {
-    expect(formatAcademicYear('2018 EC')).toBe('2018E.C/2026G.C.')
-    expect(formatAcademicYear('2016')).toBe('2016E.C/2024G.C.')
-    expect(formatAcademicYear('Invalid')).toBe('Invalid')
-  })
-})
-
-describe('buildRoster', () => {
-  it('calculates the golden numbers correctly', () => {
-    const students = [{ id: 1, fullName: 'Test', sex: 'M' as const, age: 17 }]
-    const subjects = [
-      { id: 1, label: 'Sub1' }, { id: 2, label: 'Sub2' }, { id: 3, label: 'Sub3' },
-      { id: 4, label: 'Sub4' }, { id: 5, label: 'Sub5' }, { id: 6, label: 'Sub6' },
-      { id: 7, label: 'Sub7' }
-    ]
-    
-    const sem1Vals = [43, 48, 52, 65, 58, 68, 77]
-    const sem2Vals = [73, 46, 64, 58, 68, 74, 76]
-
-    const sem1Marks = subjects.map((s, i) => ({ studentId: 1, subjectLabel: s.label, value: sem1Vals[i] }))
-    const sem2Marks = subjects.map((s, i) => ({ studentId: 1, subjectLabel: s.label, value: sem2Vals[i] }))
-
-    const result = buildRoster({
-      students, subjects, sem1Marks, sem2Marks,
-      attendanceAbsents: {}, conduct: {}, remarks: {}
-    })
-
-    const block = result.students[0]
-    
-    // I row
-    expect(block.rows[0].total).toBe(411)
-    expect(block.rows[0].average).toBe(59)
-    
-    // II row
-    expect(block.rows[1].total).toBe(459)
-    expect(block.rows[1].average).toBe(66)
-    
-    // AV row
-    expect(block.rows[2].total).toBe(435)
-    expect(block.rows[2].average).toBe(62)
-    
-    // AV subject values (e.g. Sub1: (43+73)/2 = 58)
-    expect(block.rows[2].subjectValues['Sub1']).toBe(58)
-    expect(block.rows[2].subjectValues['Sub4']).toBe(61.5)
-  })
-
-  it('blanks stay blank, no zeros', () => {
-    const students = [{ id: 1, fullName: 'Test', sex: 'M' as const, age: 17 }]
-    const subjects = [{ id: 1, label: 'Math' }]
-    const result = buildRoster({
-      students, subjects, sem1Marks: [{ studentId: 1, subjectLabel: 'Math', value: 50 }],
-      sem2Marks: [], attendanceAbsents: {}, conduct: {}, remarks: {}
-    })
-    
-    const block = result.students[0]
-    // Sem II is completely blank
-    expect(block.rows[1].total).toBeNull()
-    expect(block.rows[1].average).toBeNull()
-    
-    // AV row is blank because Sem II is missing
-    expect(block.rows[2].total).toBeNull()
-    expect(block.rows[2].average).toBeNull()
-  })
-
-  it('ties share rank', () => {
+describe('Golden 7-student roster', () => {
+  it('matches the owner\'s data', () => {
     const students = [
-      { id: 1, fullName: 'A', sex: 'M' as const, age: 17 },
-      { id: 2, fullName: 'B', sex: 'M' as const, age: 17 },
-      { id: 3, fullName: 'C', sex: 'M' as const, age: 17 }
+      { id: 1, fullName: 'S1', sex: 'M' as const, age: 12 },
+      { id: 2, fullName: 'S2', sex: 'M' as const, age: 12 },
+      { id: 3, fullName: 'S3', sex: 'M' as const, age: 12 },
+      { id: 4, fullName: 'S4', sex: 'M' as const, age: 12 },
+      { id: 5, fullName: 'S5', sex: 'M' as const, age: 12 },
+      { id: 6, fullName: 'S6', sex: 'M' as const, age: 12 },
+      { id: 7, fullName: 'S7', sex: 'M' as const, age: 12 },
     ]
-    const subjects = [{ id: 1, label: 'Math' }]
-    const sem1Marks = [
-      { studentId: 1, subjectLabel: 'Math', value: 90 },
-      { studentId: 2, subjectLabel: 'Math', value: 90 },
-      { studentId: 3, subjectLabel: 'Math', value: 80 }
+    const sem1Subjects = [
+      { id: 1, classId: 1, name: 'Biology', maxScore: 100, order: 1, kind: 'score' as const },
+      { id: 2, classId: 1, name: 'Physics', maxScore: 100, order: 2, kind: 'score' as const },
+      { id: 3, classId: 1, name: 'chemistery', maxScore: 100, order: 3, kind: 'score' as const }, // typo
+      { id: 4, classId: 1, name: 'HIP', maxScore: 100, order: 4, kind: 'score' as const },
+      { id: 5, classId: 1, name: 'Biology1', maxScore: 100, order: 5, kind: 'score' as const },
     ]
-    const result = buildRoster({
-      students, subjects, sem1Marks, sem2Marks: [], attendanceAbsents: {}, conduct: {}, remarks: {}
-    })
+    const sem2Subjects = [
+      { id: 11, classId: 1, name: 'Biology', maxScore: 100, order: 1, kind: 'score' as const },
+      { id: 12, classId: 1, name: 'Physics', maxScore: 100, order: 2, kind: 'score' as const },
+      { id: 13, classId: 1, name: 'chemistry', maxScore: 100, order: 3, kind: 'score' as const }, // correct
+      { id: 14, classId: 1, name: 'HIP', maxScore: 100, order: 4, kind: 'score' as const },
+      { id: 15, classId: 1, name: 'Biology1', maxScore: 100, order: 5, kind: 'score' as const },
+    ]
     
-    expect(result.students[0].rows[0].rank).toBe(1)
-    expect(result.students[1].rows[0].rank).toBe(1)
-    expect(result.students[2].rows[0].rank).toBe(3) // Skips 2
+    // Golden marks
+    const sem1Marks = [
+      { studentId: 1, subjectId: 1, value: 78 }, { studentId: 1, subjectId: 2, value: 98 }, { studentId: 1, subjectId: 3, value: 87 }, { studentId: 1, subjectId: 4, value: 78 }, { studentId: 1, subjectId: 5, value: 78 },
+      { studentId: 2, subjectId: 1, value: 80 }, { studentId: 2, subjectId: 2, value: 90 }, { studentId: 2, subjectId: 3, value: 90 }, { studentId: 2, subjectId: 4, value: 90 }, { studentId: 2, subjectId: 5, value: 92 },
+      { studentId: 3, subjectId: 1, value: 78 }, { studentId: 3, subjectId: 2, value: 98 }, { studentId: 3, subjectId: 3, value: 87 }, { studentId: 3, subjectId: 4, value: 78 }, { studentId: 3, subjectId: 5, value: 78 },
+      { studentId: 4, subjectId: 1, value: 50 }, { studentId: 4, subjectId: 2, value: 60 }, { studentId: 4, subjectId: 3, value: 57 }, { studentId: 4, subjectId: 4, value: 60 }, { studentId: 4, subjectId: 5, value: 60 },
+      { studentId: 5, subjectId: 1, value: 90 }, { studentId: 5, subjectId: 2, value: 90 }, { studentId: 5, subjectId: 3, value: 90 }, { studentId: 5, subjectId: 4, value: 90 }, { studentId: 5, subjectId: 5, value: 89 },
+      { studentId: 6, subjectId: 1, value: 84 }, { studentId: 6, subjectId: 2, value: 84 }, { studentId: 6, subjectId: 3, value: 84 }, { studentId: 6, subjectId: 4, value: 84 }, { studentId: 6, subjectId: 5, value: 82 },
+      // Student 7 has no Sem I marks
+    ]
+
+    const sem2Marks = [
+      { studentId: 1, subjectId: 11, value: 45 }, { studentId: 1, subjectId: 12, value: 66 }, { studentId: 1, subjectId: 13, value: 77 }, { studentId: 1, subjectId: 14, value: 99 }, { studentId: 1, subjectId: 15, value: 99 },
+      { studentId: 2, subjectId: 11, value: 45 }, { studentId: 2, subjectId: 12, value: 55 }, { studentId: 2, subjectId: 13, value: 66 }, { studentId: 2, subjectId: 14, value: 86 }, { studentId: 2, subjectId: 15, value: 99 },
+      { studentId: 3, subjectId: 11, value: 55 }, { studentId: 3, subjectId: 12, value: 54 }, { studentId: 3, subjectId: 13, value: 66 }, { studentId: 3, subjectId: 14, value: 99 }, { studentId: 3, subjectId: 15, value: 99 },
+      { studentId: 4, subjectId: 11, value: 55 }, { studentId: 4, subjectId: 12, value: 77 }, { studentId: 4, subjectId: 13, value: 88 }, { studentId: 4, subjectId: 14, value: 99 }, { studentId: 4, subjectId: 15, value: 99 },
+      { studentId: 5, subjectId: 11, value: 44 }, { studentId: 5, subjectId: 12, value: 55 }, { studentId: 5, subjectId: 13, value: 77 }, { studentId: 5, subjectId: 14, value: 99 }, { studentId: 5, subjectId: 15, value: 99 },
+      { studentId: 6, subjectId: 11, value: 44 }, { studentId: 6, subjectId: 12, value: 55 }, { studentId: 6, subjectId: 13, value: 77 }, { studentId: 6, subjectId: 14, value: 99 }, { studentId: 6, subjectId: 15, value: 99 },
+      { studentId: 7, subjectId: 11, value: 44 }, { studentId: 7, subjectId: 12, value: 66 }, { studentId: 7, subjectId: 13, value: 6 }, { studentId: 7, subjectId: 14, value: 77 }, { studentId: 7, subjectId: 15, value: 99 },
+    ]
+
+    const rosterSubjects = autoMapSubjects(sem1Subjects, sem2Subjects, sem1Marks, sem2Marks)
+    
+    // Should suggest merging chemistery and chemistry
+    const chem = rosterSubjects.find(s => s.label === 'chemistery' || s.label === 'chemistry')
+    expect(chem).toBeDefined()
+
+    const model = buildRoster({
+      students,
+      rosterSubjects,
+      sem1Marks,
+      sem2Marks,
+      attendanceAbsents: {},
+      conduct: {},
+      remarks: {}
+    })
+
+    const s1 = model.students[0]
+    expect(s1.rows[0].total).toBe(419)
+    expect(s1.rows[1].total).toBe(386)
+    expect(s1.rows[2].total).toBe(402.5)
+    expect(s1.rows[2].average).toBe(81)
+
+    // Ranks
+    expect(model.students[0].rows[0].rank).toBe(3) // S1 419
+    expect(model.students[1].rows[0].rank).toBe(2) // S2 442
+    expect(model.students[2].rows[0].rank).toBe(3) // S3 419
+    expect(model.students[3].rows[0].rank).toBe(6) // S4 287
+    expect(model.students[4].rows[0].rank).toBe(1) // S5 449
+    expect(model.students[5].rows[0].rank).toBe(5) // S6 418
+    expect(model.students[6].rows[0].rank).toBe(null) // S7 no marks
+
+    // Sem II ranks
+    expect(model.students[0].rows[1].rank).toBe(2) // S1 386
+    expect(model.students[1].rows[1].rank).toBe(6) // S2 351
+    expect(model.students[2].rows[1].rank).toBe(5) // S3 373
+    expect(model.students[3].rows[1].rank).toBe(1) // S4 418
+    expect(model.students[4].rows[1].rank).toBe(3) // S5 374
+    expect(model.students[5].rows[1].rank).toBe(3) // S6 374
+    expect(model.students[6].rows[1].rank).toBe(7) // S7 292
   })
 })

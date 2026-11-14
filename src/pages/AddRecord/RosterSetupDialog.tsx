@@ -15,11 +15,12 @@ interface RosterSetupDialogProps {
 }
 
 export function RosterSetupDialog({ sheetOptions, t, onExport, onCancel }: RosterSetupDialogProps) {
-  const [sem1SheetId, setSem1SheetId] = useState<number | null>(null)
-  const [sem2SheetId, setSem2SheetId] = useState<number | null>(null)
-
   const sem1Options = sheetOptions.filter(o => o.semester === 1)
   const sem2Options = sheetOptions.filter(o => o.semester === 2)
+
+  // Auto-select the first available sheet for both semesters
+  const [sem1SheetId, setSem1SheetId] = useState<number | null>(sem1Options[0]?.id ?? null)
+  const [sem2SheetId, setSem2SheetId] = useState<number | null>(sem2Options[0]?.id ?? null)
 
   return (
     <div className="class-dialog-backdrop" onClick={onCancel} role="presentation">
@@ -30,7 +31,7 @@ export function RosterSetupDialog({ sheetOptions, t, onExport, onCancel }: Roste
           <span>Semester I Marks From</span>
           <select value={sem1SheetId ?? ''} onChange={(e) => setSem1SheetId(e.target.value ? Number(e.target.value) : null)}>
             <option value="">– None –</option>
-            {sem1Options.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+            {sem1Options.map(o => <option key={o.id} value={o.id}>{o.name} (Sem I)</option>)}
           </select>
         </label>
 
@@ -38,7 +39,7 @@ export function RosterSetupDialog({ sheetOptions, t, onExport, onCancel }: Roste
           <span>Semester II Marks From</span>
           <select value={sem2SheetId ?? ''} onChange={(e) => setSem2SheetId(e.target.value ? Number(e.target.value) : null)}>
             <option value="">– None –</option>
-            {sem2Options.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+            {sem2Options.map(o => <option key={o.id} value={o.id}>{o.name} (Sem II)</option>)}
           </select>
         </label>
 

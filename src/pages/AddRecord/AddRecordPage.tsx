@@ -9,6 +9,8 @@ import * as studentSemesterRepo from '../../db/repositories/studentSemesterRepo'
 import * as attendanceRepo from '../../db/repositories/attendanceRepo'
 import { exportData } from '../../export'
 import { buildRoster } from '../../export/roster/buildRoster'
+import { autoMapSubjects } from '../../export/roster/autoMapSubjects'
+import { auditRoster } from '../../export/roster/auditRoster'
 import { writeRosterXlsx } from '../../export/roster/writeRosterXlsx'
 import { writeRosterCsv } from '../../export/roster/writeRosterCsv'
 import { formatAcademicYear } from '../../export/roster/academicYear'
@@ -390,52 +392,129 @@ export function AddRecordPage() {
     if (!activeClass?.id) return
     setRosterDialogOpen(false)
     window.dispatchEvent(new CustomEvent('markbook:export-status', { detail: { exporting: true } }))
+    
     try {
-      const allStudents = students.filter(s => !s.archivedAt && s.id != null)
-      const studentIds = allStudents.map(s => s.id!)
-      const sem1MarksRaw = sem1ClassId ? await scoreRepo.listScoresForSemester(activeClass.id, 1) : {}
-      const sem2MarksRaw = sem2ClassId ? await scoreRepo.listScoresForSemester(activeClass.id, 2) : {}
-      const allSessions = await attendanceRepo.listAttendanceSessions(activeClass.id)
-      const sessionIds = allSessions.map(s => s.id)
-      const allRecords = await attendanceRepo.listAttendanceRecords(sessionIds)
-      const absentsMap: Record<number, number> = {}
-      for (const rec of allRecords) {
-        if (rec.status === 'A') absentsMap[rec.studentId] = (absentsMap[rec.studentId] || 0) + 1
+      // 1. Load students from BOTH classes and merge by name
+      const sem1Students = sem1ClassId ? await studentRepo.listStudents(sem1ClassId) : []
+      const sem2Students = sem2ClassId ? await studentRepo.listStudents(sem2ClassId) : []
+      
+      const toSex = (v: unknown): 'F' | 'M' | null => (v === 'F' || v === 'M' ? v : null)
+      const studentMap = new Map<string, { id: number; fullName: string; sex: 'F' | 'M' | null; age: number | null }>()
+      
+      // Add Sem 1 students
+      for (const s of sem1Students) {
+        if (!s.id) continue
+        studentMap.set(s.fullName.trim(), { id: s.id, fullName: s.fullName, sex: toSex(s.sex), age: s.age ?? null })
       }
-      const remarks1 = await studentSemesterRepo.listRemarksForSemester(activeClass.id, 1)
-      const remarks2 = await studentSemesterRepo.listRemarksForSemester(activeClass.id, 2)
-      const combinedRemarks: Record<number, string> = {}
-      for (const sid of studentIds) {
-        const r = remarks2[sid] || remarks1[sid]
-        if (r) combinedRemarks[sid] = r
+      // Add Sem 2 students (if not already there)
+      for (const s of sem2Students) {
+        if (!s.id) continue
+        const name = s.fullName.trim()
+        if (!studentMap.has(name)) {
+          studentMap.set(name, { id: s.id, fullName: s.fullName, sex: toSex(s.sex), age: s.age ?? null })
+        }
       }
-      const flattenMarks = (map: Record<number, Record<number, CellValue>>): any[] => {
+      
+      const mergedStudents = Array.from(studentMap.values())
+
+      // 2. Load subjects for BOTH classes (they are usually the same)
+      const sem1Subjects = sem1ClassId ? await subjectRepo.listSubjects(sem1ClassId) : []
+      const sem2Subjects = sem2ClassId ? await subjectRepo.listSubjects(sem2ClassId) : []
+
+      // 3. Load marks for BOTH semesters from their respective classes
+      const sem1MarksRaw = sem1ClassId ? await scoreRepo.listScoresForSemester(sem1ClassId, 1) : {}
+      const sem2MarksRaw = sem2ClassId ? await scoreRepo.listScoresForSemester(sem2ClassId, 2) : {}
+
+      // 4. Map marks to the merged students by matching names
+      const nameToMasterId = new Map<string, number>()
+      for (const s of mergedStudents) nameToMasterId.set(s.fullName.trim(), s.id)
+
+      const flattenMarks = (
+        map: Record<number, Record<number, CellValue>>,
+        semesterStudents: typeof sem1Students
+      ): any[] => {
         const out: any[] = []
         for (const studentId in map) {
+          const student = semesterStudents.find(s => s.id === Number(studentId))
+          if (!student) continue
+          const masterId = nameToMasterId.get(student.fullName.trim())
+          if (!masterId) continue
+
           for (const subId in map[studentId]) {
-            const subject = subjects.find(s => s.id === Number(subId))
-            if (subject) out.push({ studentId: Number(studentId), subjectLabel: subject.name, value: map[studentId][subId] })
+            out.push({ studentId: masterId, subjectId: Number(subId), value: map[studentId][subId] as number | null })
           }
         }
         return out
       }
-      const rosterSubjects = subjects.filter(s => (s.kind ?? 'score') === 'score').map(s => ({ id: s.id!, label: s.name }))
+
+      const flat1 = flattenMarks(sem1MarksRaw, sem1Students)
+      const flat2 = flattenMarks(sem2MarksRaw, sem2Students)
+      
+      const rosterSubjects = autoMapSubjects(sem1Subjects, sem2Subjects, flat1, flat2)
+
+      // 5. Load attendance and remarks
+      const allSessions = await attendanceRepo.listAttendanceSessions(activeClass.id)
+      const allRecords = await attendanceRepo.listAttendanceRecords(allSessions.map(s => s.id))
+      const absentsMap: Record<number, number> = {}
+      for (const rec of allRecords) {
+        if (rec.status === 'A') absentsMap[rec.studentId] = (absentsMap[rec.studentId] || 0) + 1
+      }
+      
+      const remarks1 = await studentSemesterRepo.listRemarksForSemester(activeClass.id, 1)
+      const remarks2 = await studentSemesterRepo.listRemarksForSemester(activeClass.id, 2)
+      const combinedRemarks: Record<number, string> = {}
+      for (const s of mergedStudents) {
+        const r = remarks2[s.id] || remarks1[s.id]
+        if (r) combinedRemarks[s.id] = r
+      }
+
+      // 6. Build the model
       const model = buildRoster({
-        students: allStudents.map(s => ({ id: s.id!, fullName: s.fullName, sex: s.sex ?? null, age: s.age ?? null })),
-        subjects: rosterSubjects,
-        sem1Marks: flattenMarks(sem1MarksRaw),
-        sem2Marks: flattenMarks(sem2MarksRaw),
+        students: mergedStudents,
+        rosterSubjects,
+        sem1Marks: flat1,
+        sem2Marks: flat2,
         attendanceAbsents: absentsMap,
         conduct: {},
         remarks: combinedRemarks,
       })
+
+      // 7. Fix grade extraction for the title
+      let displayGrade = activeClass.grade
+      if (!displayGrade) {
+        const match = activeClass.name.match(/grade\s*(\d+)/i)
+        if (match) displayGrade = Number(match[1])
+      }
+      let displaySection = activeClass.section
+      if (!displaySection) {
+        const match = activeClass.name.match(/\s([A-Z])$/i)
+        if (match) displaySection = match[1]
+      }
+
+      // 7.5 Run Safety Audit
+      const issues = auditRoster(model)
+      const errors = issues.filter(i => i.severity === 'error')
+      if (errors.length > 0) {
+        const msg = 'The roster did not pass the data check. Details:\n\n' + errors.map(e => e.message).join('\n')
+        console.error('[ROSTER AUDIT] Errors:', errors)
+        if (!window.confirm(msg + '\n\nDownload anyway?')) {
+          window.dispatchEvent(new CustomEvent('markbook:export-status', { detail: { exporting: false } }))
+          return
+        }
+      }
+
+      // 8. Generate the file
       const dateStr = new Date().toISOString().split('T')[0]
       const cleanClassName = activeClass.name.replace(/[^a-z0-9]/gi, '')
       const filename = `${cleanClassName}_Roster_${dateStr}.${format}`
+      
       if (format === 'xlsx') {
         const buffer = await writeRosterXlsx({
-          model, schoolName: activeClass.schoolName ?? '',
+          model, 
+          schoolName: activeClass.schoolName ?? '',
           className: activeClass.name,
+          grade: displayGrade,
+          section: displaySection,
           academicYear: formatAcademicYear(activeClass.academicYear),
         })
         const blob = new Blob([buffer.buffer as ArrayBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
@@ -585,7 +664,31 @@ export function AddRecordPage() {
         </div>
       )}
 
-      {createClassOpen && activeClass && null /* moved above */}
+      {createClassOpen && (
+        <div className="class-dialog-backdrop" onClick={() => setCreateClassOpen(false)} role="presentation">
+          <form className="class-dialog" onClick={(e) => e.stopPropagation()} onSubmit={createClass}>
+            <h3>{getText('addRecord.classDialogTitle')}</h3>
+            <label><span>{getText('addRecord.school')}</span><input value={createClassForm.schoolName} onChange={(e) => setCreateClassForm((c) => ({ ...c, schoolName: e.target.value }))} /></label>
+            <div className="dialog-two-col">
+              <label><span>{getText('addRecord.grade')}</span><input value={createClassForm.grade} onChange={(e) => setCreateClassForm((c) => ({ ...c, grade: e.target.value }))} /></label>
+              <label><span>{getText('addRecord.section')}</span><input value={createClassForm.section} maxLength={3} onChange={(e) => setCreateClassForm((c) => ({ ...c, section: e.target.value.toUpperCase() }))} /></label>
+            </div>
+            <div className="dialog-two-col">
+              <label><span>{getText('addRecord.semester')}</span>
+                <div className="toggle-group">
+                  <button type="button" className={`toggle-btn ${createClassForm.semester === 1 ? 'is-active' : ''}`} onClick={() => setCreateClassForm((c) => ({ ...c, semester: 1 }))}>I</button>
+                  <button type="button" className={`toggle-btn ${createClassForm.semester === 2 ? 'is-active' : ''}`} onClick={() => setCreateClassForm((c) => ({ ...c, semester: 2 }))}>II</button>
+                </div>
+              </label>
+              <label><span>{getText('addRecord.year')}</span><input value={createClassForm.academicYear} onChange={(e) => setCreateClassForm((c) => ({ ...c, academicYear: e.target.value }))} /></label>
+            </div>
+            <div className="dialog-actions">
+              <button type="button" className="toolbar-button" onClick={() => setCreateClassOpen(false)}>{getText('common.cancel')}</button>
+              <button type="submit" className="toolbar-button primary-button">{getText('common.save')}</button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {rosterDialogOpen && (
         <RosterSetupDialog

@@ -48,7 +48,7 @@ export function writeRosterCsv(input: RosterCsvInput): string {
         student.sex,
         student.age,
         SEM_LABELS[row.semester],
-        ...model.subjects.map(sub => row.subjectValues[sub]),
+        ...model.subjects.map(sub => row.subjectValues[sub.key]),
         row.total,
         row.average,
         row.rank,
