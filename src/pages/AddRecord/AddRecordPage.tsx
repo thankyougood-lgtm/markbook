@@ -4,269 +4,340 @@ import type { MarkBookClass, Semester, StudentRow, SubjectRow } from '../../db/d
 import * as classRepo from '../../db/repositories/classRepo'
 import * as scoreRepo from '../../db/repositories/scoreRepo'
 import * as studentRepo from '../../db/repositories/studentRepo'
-import * as studentSemesterRepo from '../../db/repositories/studentSemesterRepo'
 import * as subjectRepo from '../../db/repositories/subjectRepo'
+import * as studentSemesterRepo from '../../db/repositories/studentSemesterRepo'
+import * as attendanceRepo from '../../db/repositories/attendanceRepo'
 import { exportData } from '../../export'
+import { buildRoster } from '../../export/roster/buildRoster'
+import { autoMapSubjects } from '../../export/roster/autoMapSubjects'
+import { auditRoster } from '../../export/roster/auditRoster'
+import { writeRosterXlsx } from '../../export/roster/writeRosterXlsx'
+import { writeRosterCsv } from '../../export/roster/writeRosterCsv'
+import { formatAcademicYear } from '../../export/roster/academicYear'
+import { RosterSetupDialog } from './RosterSetupDialog'
 import type { ExportColumn, ExportPayload, ExportStudentRow } from '../../export/types'
-import { parsePaste } from '../../lib/grid/parsePaste'
 import en from '../../i18n/en.json'
 import am from '../../i18n/am.json'
 import om from '../../i18n/om.json'
 
-const dictionaries = { en: en as Record<string, string>, am: am as Record<string, string>, om: om as Record<string, string> }
-
+const dictionaries = {
+  en: en as Record<string, string>,
+  am: am as Record<string, string>,
+  om: om as Record<string, string>,
+}
 type Locale = keyof typeof dictionaries
-
 type SaveState = 'saved' | 'saving' | 'retry'
-
 type CellValue = number | string | null
-
-type ProductSheetTab = { id: number; label: string; active: boolean }
 
 function getLocale(): Locale {
   const saved = localStorage.getItem('markbook-language')
   return saved === 'am' || saved === 'om' ? saved : 'en'
 }
-
 function getText(key: string) {
   return dictionaries[getLocale()][key] ?? key
 }
 
 export function AddRecordPage() {
   const [classes, setClasses] = useState<MarkBookClass[]>([])
-  const [selectedClassId, setSelectedClassId] = useState<number | null>(null)
-  const [semester, setSemester] = useState<Semester>(1)
+  const [selectedClassId, setSelectedClassId] = useState<number | null>(() => {
+    const saved = localStorage.getItem('markbook-selected-sheet')
+    if (!saved) return null
+    const classId = Number(saved.split('-')[0])
+    return Number.isFinite(classId) && classId > 0 ? classId : null
+  })
+  const [semester, setSemester] = useState<Semester>(() => {
+    const saved = localStorage.getItem('markbook-selected-sheet')
+    if (!saved) return 1
+    return Number(saved.split('-')[1]) === 2 ? 2 : 1
+  })
+
   const [students, setStudents] = useState<StudentRow[]>([])
   const [subjects, setSubjects] = useState<SubjectRow[]>([])
   const [scores, setScores] = useState<Record<number, Record<number, CellValue>>>({})
   const [remarks, setRemarks] = useState<Record<number, string | null>>({})
-  const [undoStack, setUndoStack] = useState<Array<{ students: StudentRow[]; subjects: SubjectRow[]; scores: Record<number, Record<number, CellValue>>; remarks: Record<number, string | null> }>>([])
-  const [redoStack, setRedoStack] = useState<Array<{ students: StudentRow[]; subjects: SubjectRow[]; scores: Record<number, Record<number, CellValue>>; remarks: Record<number, string | null> }>>([])
+
   const [saveState, setSaveState] = useState<SaveState>('saved')
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [subjectDialogOpen, setSubjectDialogOpen] = useState(false)
+  const [createClassOpen, setCreateClassOpen] = useState(false)
   const [columnDialogOpen, setColumnDialogOpen] = useState(false)
-  const [subjectEditorOpen, setSubjectEditorOpen] = useState(false)
-  const [subjectEditorState, setSubjectEditorState] = useState({
-    subjectId: null as number | null,
-    name: '',
-    maxScore: 100,
-  })
-  const [dialogState, setDialogState] = useState({
+  const [rosterDialogOpen, setRosterDialogOpen] = useState(false)
+
+  const [columnForm, setColumnForm] = useState({ name: '', maxScore: 100 })
+  const [createClassForm, setCreateClassForm] = useState({
     schoolName: '',
-    grade: 11,
+    grade: '',
     section: 'A',
     semester: 1 as Semester,
     academicYear: getText('addRecord.defaultYear'),
   })
-  const [subjectDialogState, setSubjectDialogState] = useState({
-    name: '',
-    maxScore: 100,
+
+  const [columnWidths] = useState<Record<string, number>>({
+    no: 48, name: 140, sex: 64, age: 64, sem: 80, total: 88,
   })
-  const [columnDialogState, setColumnDialogState] = useState({
-    name: '',
-    kind: 'text' as 'text' | 'number' | 'dropdown',
-    options: 'Present, Absent, Late, Excused',
-  })
-  const [columnWidths, setColumnWidths] = useState<Record<string, number>>({
-    no: 48,
-    name: 180,
-    sex: 72,
-    age: 72,
-    total: 120,
-    remark: 160,
-  })
-  const persistedStudentsRef = useRef<Record<number, StudentRow>>({})
-  const persistedScoresRef = useRef<Record<number, Record<number, CellValue>>>({})
-  const persistedRemarksRef = useRef<Record<number, string | null>>({})
-  const saveTimerRef = useRef<number | null>(null)
+
   const isMountedRef = useRef(true)
+  const studentsRef = useRef(students)
+  const scoresRef = useRef(scores)
+  const remarksRef = useRef(remarks)
+
+  // Keep refs in sync with state
+  useEffect(() => { studentsRef.current = students }, [students])
+  useEffect(() => { scoresRef.current = scores }, [scores])
+  useEffect(() => { remarksRef.current = remarks }, [remarks])
   const abortControllerRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
     isMountedRef.current = true
     return () => {
       isMountedRef.current = false
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort()
-      }
+      if (abortControllerRef.current) abortControllerRef.current.abort()
     }
   }, [])
 
   const activeClass = classes.find((item) => item.id === selectedClassId) ?? null
 
-  const sheetTabs = useMemo<ProductSheetTab[]>(() => {
-    const nextTabs: ProductSheetTab[] = []
-
+  const sheetTabs = useMemo(() => {
+    const tabs = []
     for (const item of classes) {
-      const openSemesters = Array.isArray(item.openSemesters) ? item.openSemesters : [1]
-
-      for (const openSemester of openSemesters) {
-        const semesterLabel = Number(openSemester) === 1 ? getText('semester.short.i') : getText('semester.short.ii')
-        nextTabs.push({
-          id: (item.id ?? 0) * 10 + Number(openSemester),
-          label: `${item.name} · ${semesterLabel}`,
-          active: item.id === selectedClassId && semester === Number(openSemester),
+      const semesters = Array.isArray(item.openSemesters) ? item.openSemesters : [1]
+      for (const sem of semesters) {
+        const label = Number(sem) === 1 ? getText('semester.short.i') : getText('semester.short.ii')
+        tabs.push({
+          id: (item.id ?? 0) * 10 + Number(sem),
+          label: `${item.name} · ${label}`,
+          active: item.id === selectedClassId && semester === Number(sem),
         })
       }
     }
-
-    return nextTabs
+    return tabs
   }, [classes, selectedClassId, semester])
 
   const loadClasses = async () => {
     const items = await classRepo.listClasses()
     setClasses(items)
-
     if (!items.length) {
-      setSelectedClassId(null)
-      setStudents([])
-      setSubjects([])
+      setSelectedClassId(null); setStudents([]); setSubjects([]); setScores({}); setRemarks({})
       return
     }
-
-    const nextSelected = selectedClassId ?? items[0].id ?? null
+    const savedExists = selectedClassId != null && items.some((item) => item.id === selectedClassId)
+    const nextSelected = savedExists ? selectedClassId : (items[0]?.id ?? null)
     setSelectedClassId(nextSelected)
-
     const nextClass = items.find((item) => item.id === nextSelected) ?? items[0]
     if (nextClass && nextClass.openSemesters.length) {
-      setSemester((Number(nextClass.openSemesters[0]) as Semester) || 1)
+      const allowed = nextClass.openSemesters.map((n) => Number(n))
+      if (!allowed.includes(semester)) setSemester((allowed[0] as Semester) || 1)
     }
   }
 
-  useEffect(() => {
-    void loadClasses()
-  }, [])
+  useEffect(() => { void loadClasses() }, [])
 
   useEffect(() => {
-    if (!activeClass?.id) {
-      setStudents([])
-      setSubjects([])
-      setScores({})
-      setRemarks({})
-      persistedStudentsRef.current = {}
-      persistedScoresRef.current = {}
-      persistedRemarksRef.current = {}
-      return
-    }
+    if (selectedClassId != null) localStorage.setItem('markbook-selected-sheet', selectedClassId + '-' + semester)
+  }, [selectedClassId, semester])
 
-    const classId = activeClass.id
+  useEffect(() => {
+    if (selectedClassId == null) return
+
+    let isCurrent = true
+    const classId = selectedClassId
 
     void (async () => {
-      const [nextStudents, nextSubjects, nextScores, nextRemarks] = await Promise.all([
-        studentRepo.listStudents(classId),
-        subjectRepo.listSubjects(classId),
-        scoreRepo.listScoresForSemester(classId, semester),
-        studentSemesterRepo.listRemarksForSemester(classId, semester),
-      ])
-
-      setStudents(nextStudents)
-      setSubjects(nextSubjects)
-      setScores(nextScores)
-      setRemarks(nextRemarks)
-      persistedStudentsRef.current = Object.fromEntries(nextStudents.map((student) => [student.id ?? -1, student]))
-      persistedScoresRef.current = JSON.parse(JSON.stringify(nextScores)) as Record<number, Record<number, CellValue>>
-      persistedRemarksRef.current = { ...nextRemarks }
-    })()
-  }, [activeClass, semester])
-
-  const flushAutoSave = async () => {
-    const currentStudents = students
-    const currentScores = scores
-    const currentRemarks = remarks
-
-    const studentsToPersist = currentStudents.filter((student) => {
-      const previous = persistedStudentsRef.current[student.id ?? -1]
-      return previous && JSON.stringify(previous) !== JSON.stringify(student)
-    })
-
-    for (const student of studentsToPersist) {
-      await studentRepo.updateStudent(student)
-    }
-
-    for (const [studentKey, scoreRow] of Object.entries(currentScores)) {
-      const studentId = Number(studentKey)
-      const previousRow = persistedScoresRef.current[studentId] ?? {}
-
-      for (const [subjectKey, value] of Object.entries(scoreRow)) {
-        const subjectId = Number(subjectKey)
-        const previousValue = previousRow[subjectId]
-        if (JSON.stringify(previousValue) === JSON.stringify(value)) {
-          continue
+      try {
+        const [nStudents, nSubjects, nScores, nRemarks] = await Promise.all([
+          studentRepo.listStudents(classId),
+          subjectRepo.listSubjects(classId),
+          scoreRepo.listScoresForSemester(classId, semester),
+          studentSemesterRepo.listRemarksForSemester(classId, semester),
+        ])
+        
+        if (isCurrent) {
+          console.log('[LOAD] Loaded scores:', nScores)
+          setStudents(nStudents)
+          setSubjects(nSubjects)
+          setScores(nScores)
+          setRemarks(nRemarks)
         }
-
-        await scoreRepo.setScore({ studentId, semester, subjectId, value: value as CellValue })
+      } catch (err) {
+        console.error('[LOAD] Failed to load data:', err)
       }
-    }
+    })()
 
-    for (const [studentKey, remark] of Object.entries(currentRemarks)) {
-      const studentId = Number(studentKey)
-      const previousValue = persistedRemarksRef.current[studentId]
-      if (JSON.stringify(previousValue) === JSON.stringify(remark)) {
-        continue
-      }
+    return () => { isCurrent = false }
+  }, [selectedClassId, semester])
 
-      await studentSemesterRepo.setRemark({ studentId, semester, remark: remark ?? null })
-    }
-
-    persistedStudentsRef.current = Object.fromEntries(currentStudents.map((student) => [student.id ?? -1, student]))
-    persistedScoresRef.current = JSON.parse(JSON.stringify(currentScores)) as Record<number, Record<number, CellValue>>
-    persistedRemarksRef.current = { ...currentRemarks }
-    setSaveState('saved')
-    saveTimerRef.current = null
-  }
-
-  const scheduleAutoSave = () => {
+  // ── Manual save only. Nothing is written to the DB until the user clicks Save.
+  const performSave = async () => {
+    if (!activeClass?.id) return
     setSaveState('saving')
-    if (saveTimerRef.current) {
-      window.clearTimeout(saveTimerRef.current)
-    }
+    
+    // Read from refs to guarantee we have the absolute latest data
+    const currentStudents = studentsRef.current
+    const currentScores = scoresRef.current
+    const currentRemarks = remarksRef.current
 
-    saveTimerRef.current = window.setTimeout(() => {
-      void flushAutoSave()
-    }, 300)
+    try {
+      // 1. Save every student's info
+      for (const s of currentStudents) {
+        if (!s.id) continue
+        await studentRepo.updateStudent(s)
+      }
+      
+      // 2. Save every mark
+      for (const student of currentStudents) {
+        if (!student.id) continue
+        const studentScores = currentScores[student.id] || {}
+        
+        for (const subject of subjects) {
+          if (!subject.id) continue
+          const val = studentScores[subject.id]
+          if (val !== undefined) {
+            await scoreRepo.setScore({ 
+              studentId: student.id, 
+              semester, 
+              subjectId: subject.id, 
+              value: val 
+            })
+          }
+        }
+      }
+
+      // 3. Save every remark
+      for (const student of currentStudents) {
+        if (!student.id) continue
+        const remark = currentRemarks[student.id] || null
+        await studentSemesterRepo.setRemark({ 
+          studentId: student.id, 
+          semester, 
+          remark 
+        })
+      }
+      
+      if (isMountedRef.current) setSaveState('saved')
+    } catch (err) {
+      console.error('Manual save failed', err)
+      if (isMountedRef.current) setSaveState('retry')
+    }
   }
 
-  const saveIndicator =
-    saveState === 'saved' ? getText('addRecord.saved') : saveState === 'saving' ? getText('addRecord.saving') : getText('addRecord.retry')
+  // These three functions ONLY update React state. They do NOT write to the DB.
+  const updateStudentField = (studentId: number, field: keyof StudentRow, value: any) => {
+    setStudents((cur) => cur.map((s) => (s.id === studentId ? { ...s, [field]: value } : s)))
+    setSaveState('retry') // 'retry' means "unsaved changes"
+  }
 
-  const defaultColumnWidths = useMemo(() => {
-    const widths: Record<string, number> = {
-      no: 48,
-      name: 180,
-      sex: 72,
-      age: 72,
-      total: 120,
-      remark: 160,
-      delete: 88,
+  const updateScoreValue = (studentId: number, subjectId: number, rawValue: string) => {
+    const subject = subjects.find((s) => s.id === subjectId)
+    const isBlank = rawValue.trim() === ''
+    let next: CellValue
+    if (subject && (subject.kind ?? 'score') === 'score') {
+      if (isBlank) next = null
+      else {
+        const n = Number(rawValue)
+        if (Number.isNaN(n) || n < 0 || n > subject.maxScore) return
+        next = n
+      }
+    } else {
+      next = isBlank ? null : rawValue
     }
+    setScores((cur) => {
+      const curRow = cur[studentId] ?? {}
+      return { ...cur, [studentId]: { ...curRow, [subjectId]: next } }
+    })
+    setSaveState('retry')
+  }
 
-    for (const subject of subjects) {
-      widths[`subject-${subject.id}`] = 104
+  const updateRemarkValue = (studentId: number, value: string) => {
+    const remark = value.trim() === '' ? null : value
+    setRemarks((cur) => ({ ...cur, [studentId]: remark }))
+    setSaveState('retry')
+  }
+
+  const addStudent = async () => {
+    if (!activeClass?.id) return
+    const nextOrder = students.length
+    const next = await studentRepo.createStudent({
+      classId: activeClass.id,
+      serialNo: nextOrder + 1,
+      fullName: `Student ${nextOrder + 1}`,
+      order: nextOrder,
+    })
+    setStudents((cur) => [...cur, next])
+  }
+
+  const saveColumn = async () => {
+    if (!activeClass?.id || !columnForm.name.trim()) return
+    try {
+      const created = await subjectRepo.createSubject({
+        classId: activeClass.id,
+        name: columnForm.name.trim(),
+        maxScore: columnForm.maxScore,
+        kind: 'score',
+      })
+      if (created) setSubjects((cur) => [...cur, created])
+      setColumnDialogOpen(false)
+    } catch { window.alert(getText('addRecord.classExists')) }
+  }
+
+  const createClass = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const section = (createClassForm.section.trim() || 'A').toUpperCase()
+    const year = createClassForm.academicYear.trim() || getText('addRecord.defaultYear')
+    const gradeStr = createClassForm.grade.trim()
+    const numericGrade = Number(gradeStr)
+    const name = !Number.isNaN(numericGrade) && numericGrade >= 1 && numericGrade <= 12
+      ? `Grade ${numericGrade} ${section}`
+      : (gradeStr || 'Class') + ' ' + section
+    try {
+      const created = await classRepo.createClass({
+        name, grade: numericGrade || 0, section, academicYear: year,
+        schoolName: createClassForm.schoolName.trim(),
+        semester: createClassForm.semester,
+        allowDuplicate: false,
+      })
+      await classRepo.openSheet(created.id!, createClassForm.semester)
+      setClasses((cur) => [...cur, created])
+      setSelectedClassId(created.id!)
+      setSemester(createClassForm.semester)
+      setCreateClassOpen(false)
+    } catch { window.alert(getText('addRecord.classExists')) }
+  }
+
+  const handleTabClick = (tabId: number) => {
+    setSelectedClassId(Math.floor(tabId / 10))
+    setSemester((tabId % 10) as Semester)
+  }
+
+  const getColumnWidth = (key: string) => columnWidths[key] ?? 88
+
+  const visibleColumns: Array<{ key: string; label: string; className?: string; subjectId?: number }> = [
+    { key: 'no', label: getText('addRecord.no') },
+    { key: 'name', label: getText('addRecord.studentName'), className: 'student-name-col' },
+    { key: 'sex', label: getText('addRecord.sex') },
+    { key: 'age', label: getText('addRecord.age') },
+    { key: 'sem', label: getText('addRecord.sheetLabel') },
+    ...subjects.map((s) => ({ key: `subject-${s.id}`, label: `${s.name} /${s.maxScore}`, subjectId: s.id })),
+    { key: 'total', label: getText('addRecord.total') },
+  ]
+
+  const totalForStudent = (studentId: number) => {
+    let sum = 0; let hasScore = false
+    for (const s of subjects) {
+      if ((s.kind ?? 'score') !== 'score') continue
+      const v = scores[studentId]?.[s.id!]
+      if (typeof v === 'number') { sum += v; hasScore = true }
     }
+    return hasScore ? sum : ''
+  }
 
-    return widths
-  }, [subjects])
-
-  const getColumnWidth = (key: string) => columnWidths[key] ?? defaultColumnWidths[key] ?? 120
-
+  // ── Export Current Sheet ──────────────────────────────────────────
   const exportCurrentSheet = async (format: 'csv' | 'xlsx' | 'pdf') => {
-    if (!activeClass?.id) {
-      return
-    }
-
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort()
-    }
-    const abortController = new AbortController()
-    abortControllerRef.current = abortController
-
+    if (!activeClass?.id) return
+    if (abortControllerRef.current) abortControllerRef.current.abort()
+    const ac = new AbortController()
+    abortControllerRef.current = ac
     window.dispatchEvent(new CustomEvent('markbook:export-status', { detail: { exporting: true } }))
-
     try {
       const activeSubjects = subjects.filter((s) => !s.archivedAt)
       const activeStudents = students.filter((s) => !s.archivedAt)
-
       const columns: ExportColumn[] = [
         { id: 'no', label: 'NO', widthPx: getColumnWidth('no'), kind: 'no' },
         { id: 'name', label: 'Students name', widthPx: getColumnWidth('name'), kind: 'name' },
@@ -274,701 +345,215 @@ export function AddRecordPage() {
         { id: 'age', label: 'Age', widthPx: getColumnWidth('age'), kind: 'age' },
         ...activeSubjects.map((s) => ({
           id: String(s.id),
-          label: s.kind === 'score' || !s.kind ? `${s.name} /${s.maxScore}` : s.name,
+          label: `${s.name} /${s.maxScore}`,
           widthPx: getColumnWidth(`subject-${s.id}`),
-          kind: (s.kind === 'score' || !s.kind ? 'score' : 'extra') as 'score' | 'extra',
+          kind: 'score' as const,
           maxScore: s.maxScore,
         })),
         { id: 'total', label: 'Total', widthPx: getColumnWidth('total'), kind: 'total' },
-        { id: 'remark', label: 'Remark', widthPx: getColumnWidth('remark'), kind: 'remark' },
       ]
-
       const rows: ExportStudentRow[] = activeStudents.map((student, idx) => {
-        const studentId = student.id ?? idx + 1
-        const scoreRow = scores[studentId] ?? {}
+        const sid = student.id ?? idx + 1
+        const row = scores[sid] ?? {}
         const colScores: Record<string, number | string | null> = {}
-
         const { sum, hasScore } = activeSubjects.reduce(
           (acc, sub) => {
             const subId = sub.id ?? -1
-            const val = scoreRow[subId]
+            const val = row[subId]
             colScores[String(subId)] = val !== undefined && val !== null ? val : null
-            if (typeof val === 'number' && (sub.kind ?? 'score') === 'score') {
-              return { sum: acc.sum + val, hasScore: true }
-            }
+            if (typeof val === 'number' && (sub.kind ?? 'score') === 'score') return { sum: acc.sum + val, hasScore: true }
             return acc
           },
           { sum: 0, hasScore: false },
         )
-
         return {
-          studentId,
-          serialNo: idx + 1,
-          name: student.fullName,
-          sex: student.sex ?? '',
-          age: student.age != null ? student.age : '',
-          scores: colScores,
-          total: hasScore ? sum : null,
-          remark: remarks[studentId] ?? '',
+          studentId: sid, serialNo: idx + 1, name: student.fullName,
+          sex: student.sex ?? '', age: student.age != null ? student.age : '',
+          scores: colScores, total: hasScore ? sum : null, remark: '',
         }
       })
-
       const payload: ExportPayload = {
-        schoolName: activeClass.schoolName,
-        className: activeClass.name,
+        schoolName: activeClass.schoolName, className: activeClass.name,
         semester: (semester === 2 ? 2 : 1) as 1 | 2,
         academicYear: activeClass.academicYear,
-        columns,
-        rows,
+        columns, rows,
       }
-
-      await exportData(format, payload, abortController.signal)
-    } catch (error) {
-      if (abortController.signal.aborted) {
-        return
-      }
-      console.error('Export failed', error)
-      window.alert(getText('menu.export'))
+      await exportData(format, payload, ac.signal)
+    } catch (err) {
+      if (ac.signal.aborted) return
+      console.error('Export failed', err)
     } finally {
-      if (isMountedRef.current) {
-        window.dispatchEvent(new CustomEvent('markbook:export-status', { detail: { exporting: false } }))
+      if (isMountedRef.current) window.dispatchEvent(new CustomEvent('markbook:export-status', { detail: { exporting: false } }))
+    }
+  }
+
+  // ── Roster Export ────────────────────────────────────────────────
+  const executeRosterExport = async (format: 'xlsx' | 'csv', sem1Id: number | null, sem2Id: number | null) => {
+    if (!activeClass?.id) return
+    setRosterDialogOpen(false)
+    window.dispatchEvent(new CustomEvent('markbook:export-status', { detail: { exporting: true } }))
+    
+    try {
+      // 1. Load students from BOTH classes (in case they are split) and merge by name
+      const sem1Students = sem1Id !== null ? await studentRepo.listStudents(activeClass.id) : []
+      const sem2Students = sem2Id !== null ? await studentRepo.listStudents(activeClass.id) : []
+      
+      const studentMap = new Map<string, { id: number; fullName: string; sex: 'M' | 'F' | null; age: number | null }>()
+      for (const s of sem1Students) {
+        if (s.id) studentMap.set(s.fullName.trim(), { id: s.id, fullName: s.fullName, sex: (s.sex as 'M' | 'F' | null) ?? null, age: s.age ?? null })
       }
+      for (const s of sem2Students) {
+        if (s.id && !studentMap.has(s.fullName.trim())) {
+          studentMap.set(s.fullName.trim(), { id: s.id, fullName: s.fullName, sex: (s.sex as 'M' | 'F' | null) ?? null, age: s.age ?? null })
+        }
+      }
+      const mergedStudents = Array.from(studentMap.values())
+
+      // 2. Load subjects for BOTH
+      const sem1Subjects = sem1Id !== null ? await subjectRepo.listSubjects(activeClass.id) : []
+      const sem2Subjects = sem2Id !== null ? await subjectRepo.listSubjects(activeClass.id) : []
+
+      // 3. Load marks for BOTH semesters
+      const sem1MarksRaw = sem1Id !== null ? await scoreRepo.listScoresForSemester(activeClass.id, 1) : {}
+      const sem2MarksRaw = sem2Id !== null ? await scoreRepo.listScoresForSemester(activeClass.id, 2) : {}
+
+      // 4. Map marks to the merged students by name
+      const nameToMasterId = new Map<string, number>()
+      for (const s of mergedStudents) nameToMasterId.set(s.fullName.trim(), s.id)
+
+      const flattenMarks = (map: Record<number, Record<number, CellValue>>, semesterStudents: typeof sem1Students): any[] => {
+        const out: any[] = []
+        for (const studentId in map) {
+          const student = semesterStudents.find(s => s.id === Number(studentId))
+          if (!student) continue
+          const masterId = nameToMasterId.get(student.fullName.trim())
+          if (!masterId) continue
+          for (const subId in map[studentId]) {
+            out.push({ studentId: masterId, subjectId: Number(subId), value: map[studentId][subId] as number | null })
+          }
+        }
+        return out
+      }
+
+      const flat1 = flattenMarks(sem1MarksRaw, sem1Students)
+      const flat2 = flattenMarks(sem2MarksRaw, sem2Students)
+      const rosterSubjects = autoMapSubjects(sem1Subjects, sem2Subjects, flat1, flat2)
+
+      // 5. Load attendance and remarks
+      const allSessions = await attendanceRepo.listAttendanceSessions(activeClass.id)
+      const allRecords = await attendanceRepo.listAttendanceRecords(allSessions.map(s => s.id))
+      const absentsMap: Record<number, number> = {}
+      for (const rec of allRecords) {
+        if (rec.status === 'A') absentsMap[rec.studentId] = (absentsMap[rec.studentId] || 0) + 1
+      }
+      const remarks1 = await studentSemesterRepo.listRemarksForSemester(activeClass.id, 1)
+      const remarks2 = await studentSemesterRepo.listRemarksForSemester(activeClass.id, 2)
+      const combinedRemarks: Record<number, string> = {}
+      for (const s of mergedStudents) {
+        const r = remarks2[s.id] || remarks1[s.id]
+        if (r) combinedRemarks[s.id] = r
+      }
+
+      // 6. Build the model
+      const model = buildRoster({
+        students: mergedStudents,
+        rosterSubjects,
+        sem1Marks: flat1,
+        sem2Marks: flat2,
+        attendanceAbsents: absentsMap,
+        conduct: {},
+        remarks: combinedRemarks,
+      })
+
+      // 6.5 Safety Audit
+      const issues = auditRoster(model)
+      if (issues.filter(i => i.severity === 'error').length > 0) {
+        if (!window.confirm('Data check failed. Download anyway?')) {
+          window.dispatchEvent(new CustomEvent('markbook:export-status', { detail: { exporting: false } }))
+          return
+        }
+      }
+
+      // 7. Generate the file
+      const dateStr = new Date().toISOString().split('T')[0]
+      const cleanClassName = activeClass.name.replace(/[^a-z0-9]/gi, '')
+      const filename = `${cleanClassName}_Roster_${dateStr}.${format}`
+      
+      if (format === 'xlsx') {
+        const buffer = await writeRosterXlsx({
+          model, 
+          schoolName: activeClass.schoolName ?? '',
+          className: activeClass.name,
+          grade: activeClass.grade || 0,
+          section: activeClass.section || 'A',
+          academicYear: formatAcademicYear(activeClass.academicYear),
+        })
+        const blob = new Blob([buffer.buffer as ArrayBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url)
+      } else {
+        const csv = writeRosterCsv({ model, className: activeClass.name })
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url)
+      }
+    } catch (err) {
+      console.error('Roster failed', err); alert('Roster export failed.')
+    } finally {
+      window.dispatchEvent(new CustomEvent('markbook:export-status', { detail: { exporting: false } }))
     }
   }
 
   useEffect(() => {
-    const handleExport = (event: Event) => {
-      const customEvent = event as CustomEvent<{ format?: 'csv' | 'xlsx' | 'pdf' }>
-      const format = customEvent.detail?.format
-      if (!format) {
-        return
-      }
-
-      void exportCurrentSheet(format)
+    const onExport = (e: Event) => {
+      const ce = e as CustomEvent<{ format?: 'csv' | 'xlsx' | 'pdf' }>
+      if (ce.detail?.format) void exportCurrentSheet(ce.detail.format)
     }
-
-    window.addEventListener('markbook:export', handleExport)
-
+    const onRoster = () => setRosterDialogOpen(true)
+    window.addEventListener('markbook:export', onExport)
+    window.addEventListener('markbook:roster-export', onRoster)
     return () => {
-      window.removeEventListener('markbook:export', handleExport)
+      window.removeEventListener('markbook:export', onExport)
+      window.removeEventListener('markbook:roster-export', onRoster)
     }
-  }, [activeClass, students, subjects, scores, remarks, semester])
+  }, [activeClass, students, subjects, scores, semester])
 
-  const snapshotState = () => ({
-    students: students.map((student) => ({ ...student })),
-    subjects: subjects.map((subject) => ({ ...subject })),
-    scores: JSON.parse(JSON.stringify(scores)) as Record<number, Record<number, CellValue>>,
-    remarks: { ...remarks },
-  })
-
-  const applySnapshot = (next: { students: StudentRow[]; subjects: SubjectRow[]; scores: Record<number, Record<number, CellValue>>; remarks: Record<number, string | null> }) => {
-    setStudents(next.students)
-    setSubjects(next.subjects)
-    setScores(next.scores)
-    setRemarks(next.remarks)
-  }
-
-  const undoLastAction = () => {
-    if (!undoStack.length) {
-      return
-    }
-
-    const previous = undoStack[undoStack.length - 1]
-    setRedoStack((current) => [snapshotState(), ...current].slice(0, 50))
-    setUndoStack((current) => current.slice(0, -1))
-    applySnapshot(previous)
-  }
-
-  const redoLastAction = () => {
-    if (!redoStack.length) {
-      return
-    }
-
-    const next = redoStack[0]
-    setUndoStack((current) => [...current.slice(-49), snapshotState()])
-    setRedoStack((current) => current.slice(1))
-    applySnapshot(next)
-  }
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
-        event.preventDefault()
-        if (event.shiftKey) {
-          redoLastAction()
-        } else {
-          undoLastAction()
-        }
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [undoStack, redoStack, students, subjects, scores, remarks])
-
-  const handlePasteIntoCell = async (
-    event: React.ClipboardEvent<HTMLInputElement | HTMLSelectElement>,
-    studentId: number,
-    field: 'studentName' | 'sex' | 'age' | 'score' | 'remark',
-    subjectId?: number,
-  ) => {
-    const clipboardText = event.clipboardData.getData('text/plain')
-    if (!clipboardText) {
-      return
-    }
-
-    event.preventDefault()
-    const rows = parsePaste(clipboardText)
-    if (!rows.length) {
-      return
-    }
-
-    for (let rowIndex = 0; rowIndex < rows.length; rowIndex += 1) {
-      const targetStudentId = studentId + rowIndex
-      const currentStudent = students.find((item) => item.id === targetStudentId)
-      if (!currentStudent) {
-        continue
-      }
-
-      for (let columnIndex = 0; columnIndex < rows[rowIndex].length; columnIndex += 1) {
-        const value = rows[rowIndex][columnIndex]
-        const targetSubjectId = typeof subjectId === 'number' ? subjectId + columnIndex : undefined
-
-        if (field === 'studentName') {
-          await updateStudentField(targetStudentId, 'fullName', value)
-        } else if (field === 'sex') {
-          await updateStudentField(targetStudentId, 'sex', value)
-        } else if (field === 'age') {
-          await updateStudentField(targetStudentId, 'age', value)
-        } else if (field === 'remark') {
-          await updateRemarkValue(targetStudentId, value)
-        } else if (typeof targetSubjectId === 'number') {
-          await updateScoreValue(targetStudentId, targetSubjectId, value)
-        }
-      }
-    }
-  }
-
-  const addStudent = async () => {
-    if (!activeClass?.id) {
-      return
-    }
-
-    const before = snapshotState()
-    const nextOrder = students.length
-    const nextStudent = await studentRepo.createStudent({
-      classId: activeClass.id,
-      serialNo: nextOrder + 1,
-      fullName: `Student ${nextOrder + 1}`,
-      order: nextOrder,
-    })
-
-    setUndoStack((current) => [...current.slice(-49), before])
-    setRedoStack([])
-    setStudents((current) => [...current, nextStudent])
-    persistedStudentsRef.current = Object.fromEntries([...students, nextStudent].map((student) => [student.id ?? -1, student]))
-  }
-
-  const addSubject = async () => {
-    if (!activeClass?.id) {
-      return
-    }
-
-    if (!subjectDialogState.name.trim()) {
-      setSubjectDialogOpen(true)
-      return
-    }
-
-    const safeMax = Number.isFinite(subjectDialogState.maxScore) && subjectDialogState.maxScore > 0 ? subjectDialogState.maxScore : 100
-
-    try {
-      const before = snapshotState()
-      const nextSubject = await subjectRepo.createSubject({
-        classId: activeClass.id,
-        name: subjectDialogState.name,
-        maxScore: safeMax,
-      })
-      setUndoStack((current) => [...current.slice(-49), before])
-      setRedoStack([])
-      setSubjects((current) => [...current, nextSubject])
-      setSubjectDialogState({ name: '', maxScore: 100 })
-      setSubjectDialogOpen(false)
-    } catch {
-      window.alert(getText('addRecord.classExists'))
-    }
-  }
-
-  const addColumn = async () => {
-    if (!activeClass?.id) {
-      return
-    }
-
-    if (!columnDialogState.name.trim()) {
-      setColumnDialogOpen(true)
-      return
-    }
-
-    const kind = columnDialogState.kind
-    const options = kind === 'dropdown'
-      ? columnDialogState.options
-          .split(',')
-          .map((item) => item.trim())
-          .filter(Boolean)
-      : []
-
-    try {
-      const before = snapshotState()
-      const nextSubject = await subjectRepo.createSubject({
-        classId: activeClass.id,
-        name: columnDialogState.name,
-        maxScore: 100,
-        kind,
-        options: options.length ? options : ['Present', 'Absent', 'Late', 'Excused'],
-      })
-      setUndoStack((current) => [...current.slice(-49), before])
-      setRedoStack([])
-      setSubjects((current) => [...current, nextSubject])
-      setColumnDialogState({ name: '', kind: 'text', options: 'Present, Absent, Late, Excused' })
-      setColumnDialogOpen(false)
-    } catch {
-      window.alert(getText('addRecord.classExists'))
-    }
-  }
-
-  const openSubjectEditor = (subjectId: number) => {
-    const subject = subjects.find((item) => item.id === subjectId)
-    if (!subject) {
-      return
-    }
-
-    setSubjectEditorState({
-      subjectId,
-      name: subject.name,
-      maxScore: subject.maxScore,
-    })
-    setSubjectEditorOpen(true)
-  }
-
-  const saveSubjectEditor = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-
-    if (subjectEditorState.subjectId == null) {
-      return
-    }
-
-    const subject = subjects.find((item) => item.id === subjectEditorState.subjectId)
-    if (!subject) {
-      return
-    }
-
-    const safeMax =
-      Number.isFinite(subjectEditorState.maxScore) && subjectEditorState.maxScore > 0 ? subjectEditorState.maxScore : subject.maxScore
-
-    const nextSubject = await subjectRepo.updateSubject({
-      ...subject,
-      name: subjectEditorState.name.trim() || subject.name,
-      maxScore: safeMax,
-    })
-
-    setSubjects((current) => current.map((item) => (item.id === nextSubject.id ? nextSubject : item)))
-    setSubjectEditorOpen(false)
-    setSubjectEditorState({ subjectId: null, name: '', maxScore: 100 })
-  }
-
-  const isScoreCell = (subjectId: number) => subjects.some((subject) => subject.id === subjectId && subject.kind === 'score')
-
-  const updateScoreValue = async (studentId: number, subjectId: number, rawValue: string) => {
-    const subject = subjects.find((item) => item.id === subjectId)
-    const isBlank = rawValue.trim() === ''
-
-    if (subject && subject.kind === 'score') {
-      const nextNumber = isBlank ? null : Number(rawValue)
-      if (Number.isNaN(nextNumber) || nextNumber === null || nextNumber < 0 || nextNumber > subject.maxScore) {
-        setSaveState('retry')
-        return
-      }
-
-      setScores((current) => {
-        const currentStudent = current[studentId] ?? {}
-        const next = {
-          ...current,
-          [studentId]: { ...currentStudent, [subjectId]: isBlank ? null : nextNumber },
-        }
-        return next
-      })
-
-      scheduleAutoSave()
-      return
-    }
-
-    const before = snapshotState()
-    const nextValue = isBlank ? null : rawValue
-
-    setUndoStack((current) => [...current.slice(-49), before])
-    setRedoStack([])
-    setScores((current) => {
-      const currentStudent = current[studentId] ?? {}
-      return {
-        ...current,
-        [studentId]: { ...currentStudent, [subjectId]: nextValue },
-      }
-    })
-
-    scheduleAutoSave()
-  }
-
-  const updateStudentField = async (studentId: number, field: 'fullName' | 'sex' | 'age', value: string) => {
-    const student = students.find((item) => item.id === studentId)
-    if (!student) {
-      return
-    }
-
-    const before = snapshotState()
-    const nextStudent: StudentRow = {
-      ...student,
-      fullName: field === 'fullName' ? value : student.fullName,
-      sex: field === 'sex' ? (value === 'M' || value === 'F' ? value : null) : student.sex ?? null,
-      age: field === 'age' ? (value === '' ? null : Number(value)) : student.age ?? null,
-    }
-
-    setUndoStack((current) => [...current.slice(-49), before])
-    setRedoStack([])
-    setStudents((current) => current.map((item) => (item.id === studentId ? nextStudent : item)))
-    scheduleAutoSave()
-  }
-
-  const updateRemarkValue = async (studentId: number, value: string) => {
-    const before = snapshotState()
-    const nextValue = value.trim() === '' ? null : value
-
-    setUndoStack((current) => [...current.slice(-49), before])
-    setRedoStack([])
-    setRemarks((current) => ({ ...current, [studentId]: nextValue }))
-    scheduleAutoSave()
-  }
-
-  const archiveStudentRow = async (studentId: number) => {
-    const student = students.find((item) => item.id === studentId)
-    if (!student) {
-      return
-    }
-
-    const confirmed = window.confirm(`${getText('addRecord.confirmDeleteStudent')}\n${student.fullName}`)
-    if (!confirmed) {
-      return
-    }
-
-    const before = snapshotState()
-    setUndoStack((current) => [...current.slice(-49), before])
-    setRedoStack([])
-    await studentRepo.archiveStudent(studentId)
-
-    setStudents((current) => current.filter((item) => item.id !== studentId))
-    setScores((current) => {
-      const next = { ...current }
-      delete next[studentId]
-      return next
-    })
-    setRemarks((current) => {
-      const next = { ...current }
-      delete next[studentId]
-      return next
-    })
-  }
-
-  const archiveSubjectColumn = async (subjectId: number) => {
-    const subject = subjects.find((item) => item.id === subjectId)
-    if (!subject) {
-      return
-    }
-
-    const confirmed = window.confirm(`${getText('addRecord.confirmDeleteSubject')}\n${subject.name}`)
-    if (!confirmed) {
-      return
-    }
-
-    const before = snapshotState()
-    setUndoStack((current) => [...current.slice(-49), before])
-    setRedoStack([])
-    await subjectRepo.archiveSubject(subjectId)
-
-    setSubjects((current) => current.filter((item) => item.id !== subjectId))
-    setScores((current) => {
-      const next: Record<number, Record<number, CellValue>> = {}
-      Object.entries(current).forEach(([studentKey, row]) => {
-        const studentId = Number(studentKey)
-        const nextRow = { ...row }
-        delete nextRow[subjectId]
-        if (Object.keys(nextRow).length > 0) {
-          next[studentId] = nextRow
-        }
-      })
-      return next
-    })
-  }
-
-  useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.hidden && saveTimerRef.current) {
-        window.clearTimeout(saveTimerRef.current)
-        void flushAutoSave()
-      }
-    }
-
-    const handlePageHide = () => {
-      if (saveTimerRef.current) {
-        window.clearTimeout(saveTimerRef.current)
-        void flushAutoSave()
-      }
-    }
-
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    window.addEventListener('pagehide', handlePageHide)
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-      window.removeEventListener('pagehide', handlePageHide)
-      if (saveTimerRef.current) {
-        window.clearTimeout(saveTimerRef.current)
-      }
-    }
-  }, [students, scores, remarks])
-
-  const totalForStudent = (studentId: number) => {
-    return subjects
-      .filter((subject) => subject.kind === 'score')
-      .reduce((sum, subject) => {
-        const value = scores[studentId]?.[subject.id ?? -1]
-        return typeof value === 'number' ? sum + value : sum
-      }, 0)
-  }
-
-  const createClass = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-
-    const normalizedSection = (dialogState.section.trim() || 'A').toUpperCase()
-    const normalizedAcademicYear = dialogState.academicYear.trim() || getText('addRecord.defaultYear')
-    const baseName = `Grade ${dialogState.grade} ${normalizedSection}`
-    const isDuplicateClass = classes.some(
-      (item) =>
-        item.grade === dialogState.grade &&
-        String(item.section ?? '').trim().toUpperCase() === normalizedSection &&
-        String(item.academicYear ?? '').trim() === normalizedAcademicYear,
-    )
-    const className = isDuplicateClass ? `${baseName} (${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})` : baseName
-
-    try {
-      const created = await classRepo.createClass({
-        name: className,
-        grade: dialogState.grade,
-        section: normalizedSection,
-        academicYear: normalizedAcademicYear,
-        schoolName: dialogState.schoolName.trim(),
-        semester: dialogState.semester,
-        allowDuplicate: true,
-      })
-
-      await classRepo.openSheet(created.id ?? 0, dialogState.semester)
-
-      setClasses((current) => {
-        const existingIndex = current.findIndex((item) => item.id === created.id)
-        if (existingIndex >= 0) {
-          return current.map((item) => (item.id === created.id ? created : item))
-        }
-        return [...current, created]
-      })
-      setSelectedClassId(created.id ?? null)
-      setSemester(dialogState.semester)
-      setDialogOpen(false)
-      setDialogState({
-        schoolName: '',
-        grade: 11,
-        section: 'A',
-        semester: 1,
-        academicYear: getText('addRecord.defaultYear'),
-      })
-    } catch {
-      window.alert(getText('addRecord.classExists'))
-    }
-  }
-
-  const handleTabClick = (tabId: number) => {
-    const nextClassId = Math.floor(tabId / 10)
-    const nextSemester = (tabId % 10) as Semester
-
-    if (!Number.isFinite(nextClassId) || (nextSemester !== 1 && nextSemester !== 2)) {
-      return
-    }
-
-    setSelectedClassId(nextClassId)
-    setSemester(nextSemester)
-  }
-
-  const beginColumnResize = (event: React.PointerEvent<HTMLElement>, key: string) => {
-    event.preventDefault()
-
-    const startX = event.clientX
-    const startWidth = getColumnWidth(key)
-
-    const onPointerMove = (moveEvent: PointerEvent) => {
-      const delta = moveEvent.clientX - startX
-      const nextWidth = Math.min(260, Math.max(60, startWidth + delta))
-      setColumnWidths((current) => ({ ...current, [key]: nextWidth }))
-    }
-
-    const onPointerUp = () => {
-      window.removeEventListener('pointermove', onPointerMove)
-      window.removeEventListener('pointerup', onPointerUp)
-      window.removeEventListener('pointercancel', onPointerUp)
-    }
-
-    window.addEventListener('pointermove', onPointerMove)
-    window.addEventListener('pointerup', onPointerUp)
-    window.addEventListener('pointercancel', onPointerUp)
-  }
-
-  const startColumnResizeFromCell = (event: React.PointerEvent<HTMLElement>, key: string) => {
-    const rect = event.currentTarget.getBoundingClientRect()
-    const edgeOffset = event.clientX - rect.left
-
-    if (edgeOffset > rect.width - 8) {
-      beginColumnResize(event, key)
-    }
-  }
-
-  const visibleColumns = [
-    { key: 'no', label: getText('addRecord.no') },
-    { key: 'name', label: getText('addRecord.studentName') },
-    { key: 'sex', label: getText('addRecord.sex') },
-    { key: 'age', label: getText('addRecord.age') },
-    ...subjects.map((subject) => ({ key: `subject-${subject.id}`, label: `${subject.name} /${subject.maxScore}`, type: 'score', id: subject.id })),
-    { key: 'total', label: getText('addRecord.total') },
-    { key: 'remark', label: getText('addRecord.remark') },
-    { key: 'delete', label: getText('common.delete') },
-  ]
-
-  const gridColumns = visibleColumns.map((column) => `${getColumnWidth(column.key)}px`).join(' ')
-
+  // ── Render ───────────────────────────────────────────────────────
   if (!classes.length) {
     return (
       <section className="add-record-page">
         <div className="add-record-header">
-          <div className="record-meta-block">
-            <div className="record-class-name">{getText('page.addRecord')}</div>
-          </div>
-          <div className="save-indicator">{saveIndicator}</div>
+          <div className="record-meta-block"><div className="record-class-name">{getText('page.addRecord')}</div></div>
+          <div className="save-indicator">{getText('addRecord.saved')}</div>
         </div>
-
-        <div className="record-toolbar" aria-label="Add Record actions">
-          <button type="button" className="toolbar-button primary-button" onClick={addStudent}>
-            {getText('addRecord.addStudent')}
-          </button>
-          <button
-            type="button"
-            className="toolbar-button"
-            onClick={() => {
-              setSubjectDialogState({ name: '', maxScore: 100 })
-              setSubjectDialogOpen(true)
-            }}
-          >
-            {getText('addRecord.addSubject')}
-          </button>
+        <div className="record-toolbar">
+          <button type="button" className="toolbar-button primary-button" onClick={() => setCreateClassOpen(true)}>{getText('addRecord.classDialogTitle')}</button>
         </div>
-
-        <div className="spreadsheet-shell" role="grid" aria-label="Gradebook grid">
-          <div className="grid-header-row">
-            <div className="grid-cell header-cell corner-cell">{getText('addRecord.no')}</div>
-            <div className="grid-cell header-cell">{getText('addRecord.studentName')}</div>
-            <div className="grid-cell header-cell">{getText('addRecord.sex')}</div>
-            <div className="grid-cell header-cell">{getText('addRecord.age')}</div>
-            <div className="grid-cell header-cell total-header">{getText('addRecord.total')}</div>
-            <div className="grid-cell header-cell">{getText('addRecord.remark')}</div>
-          </div>
-          <div className="grid-row">
-            <div className="grid-cell row-index">—</div>
-            <div className="grid-cell">{getText('addRecord.empty')}</div>
-          </div>
+        <div className="spreadsheet-shell">
+          <div className="grid-row" style={{ padding: '24px', color: 'var(--muted)' }}>{getText('addRecord.empty')}</div>
         </div>
-
-        <SheetTabs tabs={[{ id: 0, label: '+', active: true }]} onAdd={() => setDialogOpen(true)} />
-
-        {dialogOpen && (
-          <div className="class-dialog-backdrop" onClick={() => setDialogOpen(false)}>
-            <form className="class-dialog" onClick={(event) => event.stopPropagation()} onSubmit={createClass}>
+        <SheetTabs tabs={sheetTabs.length ? sheetTabs : [{ id: 0, label: '+', active: true }]} onSelect={handleTabClick} onAdd={() => setCreateClassOpen(true)} />
+        {createClassOpen && (
+          <div className="class-dialog-backdrop" onClick={() => setCreateClassOpen(false)} role="presentation">
+            <form className="class-dialog" onClick={(e) => e.stopPropagation()} onSubmit={createClass}>
               <h3>{getText('addRecord.classDialogTitle')}</h3>
-              <label>
-                <span>{getText('addRecord.school')}</span>
-                <input value={dialogState.schoolName} onChange={(event) => setDialogState((current) => ({ ...current, schoolName: event.target.value }))} />
-              </label>
+              <label><span>{getText('addRecord.school')}</span><input value={createClassForm.schoolName} onChange={(e) => setCreateClassForm((c) => ({ ...c, schoolName: e.target.value }))} /></label>
               <div className="dialog-two-col">
-                <label>
-                  <span>{getText('addRecord.grade')}</span>
-                  <select value={dialogState.grade} onChange={(event) => setDialogState((current) => ({ ...current, grade: Number(event.target.value) }))}>
-                    {[...Array(12)].map((_, index) => (
-                      <option key={index + 1} value={index + 1}>{index + 1}</option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  <span>{getText('addRecord.section')}</span>
-                  <input value={dialogState.section} maxLength={3} onChange={(event) => setDialogState((current) => ({ ...current, section: event.target.value.toUpperCase() }))} />
-                </label>
+                <label><span>{getText('addRecord.grade')}</span><input value={createClassForm.grade} onChange={(e) => setCreateClassForm((c) => ({ ...c, grade: e.target.value }))} /></label>
+                <label><span>{getText('addRecord.section')}</span><input value={createClassForm.section} maxLength={3} onChange={(e) => setCreateClassForm((c) => ({ ...c, section: e.target.value.toUpperCase() }))} /></label>
               </div>
               <div className="dialog-two-col">
-                <label>
-                  <span>{getText('addRecord.semester')}</span>
-                  <select value={dialogState.semester} onChange={(event) => setDialogState((current) => ({ ...current, semester: Number(event.target.value) as Semester }))}>
-                    <option value={1}>I</option>
-                    <option value={2}>II</option>
-                  </select>
+                <label><span>{getText('addRecord.semester')}</span>
+                  <div className="toggle-group">
+                    <button type="button" className={`toggle-btn ${createClassForm.semester === 1 ? 'is-active' : ''}`} onClick={() => setCreateClassForm((c) => ({ ...c, semester: 1 }))}>I</button>
+                    <button type="button" className={`toggle-btn ${createClassForm.semester === 2 ? 'is-active' : ''}`} onClick={() => setCreateClassForm((c) => ({ ...c, semester: 2 }))}>II</button>
+                  </div>
                 </label>
-                <label>
-                  <span>{getText('addRecord.year')}</span>
-                  <input value={dialogState.academicYear} onChange={(event) => setDialogState((current) => ({ ...current, academicYear: event.target.value }))} />
-                </label>
+                <label><span>{getText('addRecord.year')}</span><input value={createClassForm.academicYear} onChange={(e) => setCreateClassForm((c) => ({ ...c, academicYear: e.target.value }))} /></label>
               </div>
               <div className="dialog-actions">
-                <button type="button" className="toolbar-button" onClick={() => setDialogOpen(false)}>
-                  {getText('common.cancel')}
-                </button>
-                <button type="submit" className="toolbar-button primary-button">
-                  {getText('common.save')}
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-
-        {subjectDialogOpen && (
-          <div className="class-dialog-backdrop" onClick={() => setSubjectDialogOpen(false)}>
-            <form className="class-dialog" onClick={(event) => event.stopPropagation()} onSubmit={(event) => {
-              event.preventDefault()
-              void addSubject()
-            }}>
-              <h3>{getText('addRecord.addSubject')}</h3>
-              <label>
-                <span>{getText('addRecord.subjectPrompt')}</span>
-                <input
-                  value={subjectDialogState.name}
-                  onChange={(event) => setSubjectDialogState((current) => ({ ...current, name: event.target.value }))}
-                />
-              </label>
-              <label>
-                <span>{getText('addRecord.subjectMax')}</span>
-                <input
-                  type="number"
-                  min={1}
-                  value={subjectDialogState.maxScore}
-                  onChange={(event) => setSubjectDialogState((current) => ({ ...current, maxScore: Number(event.target.value) || 100 }))}
-                />
-              </label>
-              <div className="dialog-actions">
-                <button type="button" className="toolbar-button" onClick={() => setSubjectDialogOpen(false)}>
-                  {getText('common.cancel')}
-                </button>
-                <button type="submit" className="toolbar-button primary-button">
-                  {getText('common.save')}
-                </button>
+                <button type="button" className="toolbar-button" onClick={() => setCreateClassOpen(false)}>{getText('common.cancel')}</button>
+                <button type="submit" className="toolbar-button primary-button">{getText('common.save')}</button>
               </div>
             </form>
           </div>
@@ -981,371 +566,108 @@ export function AddRecordPage() {
     <section className="add-record-page">
       <div className="add-record-header">
         <div className="record-meta-block">
-          <div className="record-class-name">{activeClass?.name ?? getText('page.addRecord')}</div>
-          <div className="record-school-name">{activeClass?.schoolName ?? ''}</div>
-          <div className="record-semester">
-            {activeClass?.academicYear ?? getText('addRecord.defaultYear')} · {semester === 1 ? getText('semester.short.i') : getText('semester.short.ii')}
-          </div>
+          <div className="record-class-name">{activeClass?.name}</div>
+          <div className="record-semester">{activeClass?.academicYear} · {semester === 1 ? getText('semester.short.i') : getText('semester.short.ii')}</div>
         </div>
-        <div className="save-indicator">{saveIndicator}</div>
-      </div>
-
-      <div className="record-toolbar" aria-label="Add Record actions">
-        <button type="button" className="toolbar-button primary-button" onClick={addStudent}>
-          {getText('addRecord.addStudent')}
-        </button>
         <button
           type="button"
-          className="toolbar-button"
-          onClick={() => {
-            setSubjectDialogState({ name: '', maxScore: 100 })
-            setSubjectDialogOpen(true)
-          }}
+          className={`merged-save-btn ${saveState}`}
+          onClick={() => { void performSave() }}
+          title="Save all changes"
         >
-          {getText('addRecord.addSubject')}
-        </button>
-        <button
-          type="button"
-          className="toolbar-button"
-          onClick={() => {
-            setColumnDialogState({ name: '', kind: 'text', options: 'Present, Absent, Late, Excused' })
-            setColumnDialogOpen(true)
-          }}
-        >
-          {getText('addRecord.addColumn')}
-        </button>
-        <button type="button" className="toolbar-button" onClick={undoLastAction} disabled={!undoStack.length}>
-          {getText('addRecord.undo')}
-        </button>
-        <button type="button" className="toolbar-button" onClick={redoLastAction} disabled={!redoStack.length}>
-          {getText('addRecord.redo')}
+          {saveState === 'saving' && <span>{getText('addRecord.saving')}</span>}
+          {saveState === 'saved' && (
+            <><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg><span>{getText('addRecord.saved')}</span></>
+          )}
+          {saveState === 'retry' && <><span>💾</span><span>Save</span></>}
         </button>
       </div>
 
-      <div className="spreadsheet-shell" role="grid" aria-label="Gradebook grid">
-        <table className="spreadsheet-table">
+      <div className="record-toolbar">
+        <button type="button" className="toolbar-button primary-button icon-button" onClick={addStudent}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="8.5" cy="7" r="4" /><line x1="20" y1="8" x2="20" y2="14" /><line x1="23" y1="11" x2="17" y2="11" /></svg>
+          <span>{getText('addRecord.addStudent')}</span>
+        </button>
+        <button type="button" className="toolbar-button icon-button" onClick={() => setColumnDialogOpen(true)}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /><line x1="10" y1="7" x2="16" y2="7" /><line x1="10" y1="11" x2="16" y2="11" /></svg>
+          <span>{getText('addRecord.addAssess')}</span>
+        </button>
+      </div>
+
+      <div className="spreadsheet-shell">
+        <table className="spreadsheet-table" style={{ tableLayout: 'fixed', width: 'max-content', minWidth: '100%' }}>
+          <colgroup>{visibleColumns.map((c) => <col key={c.key} style={{ width: getColumnWidth(c.key) }} />)}</colgroup>
           <thead>
-            <tr className="grid-header-row" style={{ gridTemplateColumns: gridColumns }}>
-              {visibleColumns.map((column) => {
-                if (column.key.startsWith('subject-')) {
-                  const subjectId = Number(column.key.replace('subject-', ''))
-                  return (
-                    <th
-                      key={column.key}
-                      className={`grid-cell header-cell ${column.key === 'total' ? 'total-header' : ''}`}
-                      onPointerDown={(event) => startColumnResizeFromCell(event, column.key)}
-                    >
-                      <div className="column-header-wrap">
-                        <button type="button" className="header-button" onClick={() => openSubjectEditor(subjectId)}>
-                          {column.label}
-                        </button>
-                        <button type="button" className="utility-button danger-button column-delete-button" onClick={() => void archiveSubjectColumn(subjectId)} aria-label={`Archive ${column.label}`}>
-                          ×
-                        </button>
-                        <button
-                          type="button"
-                          className="column-resizer"
-                          aria-label={`Resize ${column.label} column`}
-                          onPointerDown={(event) => beginColumnResize(event, column.key)}
-                        />
-                      </div>
-                    </th>
-                  )
-                }
-
-                if (column.key === 'delete') {
-                  return (
-                    <th key={column.key} className="grid-cell header-cell row-delete-cell" onPointerDown={(event) => startColumnResizeFromCell(event, column.key)}>
-                      <div className="column-header-wrap">
-                        <span>{column.label}</span>
-                      </div>
-                    </th>
-                  )
-                }
-
-                return (
-                  <th
-                    key={column.key}
-                    className={`grid-cell header-cell ${column.key === 'total' ? 'total-header' : ''}`}
-                    onPointerDown={(event) => startColumnResizeFromCell(event, column.key)}
-                  >
-                    <div className="column-header-wrap">
-                      <span>{column.label}</span>
-                      <button
-                        type="button"
-                        className="column-resizer"
-                        aria-label={`Resize ${column.label} column`}
-                        onPointerDown={(event) => beginColumnResize(event, column.key)}
-                      />
-                    </div>
-                  </th>
-                )
-              })}
-            </tr>
+            <tr>{visibleColumns.map((c) => <th key={c.key} className={`grid-cell header-cell ${c.className || ''}`}><div className="column-header-wrap"><span>{c.label}</span></div></th>)}</tr>
           </thead>
-
           <tbody>
-            {students.map((student, studentIndex) => (
-              <tr key={student.id ?? studentIndex} className="grid-row" style={{ gridTemplateColumns: gridColumns }}>
-                <td className="grid-cell row-index" onPointerDown={(event) => startColumnResizeFromCell(event, 'no')}>{studentIndex + 1}</td>
-                <td className="grid-cell student-name" onPointerDown={(event) => startColumnResizeFromCell(event, 'name')}>
-                  <input
-                    className="inline-grid-input"
-                    value={student.fullName}
-                    onFocus={() => setSaveState('saved')}
-                    onPaste={(event) => void handlePasteIntoCell(event, student.id ?? 0, 'studentName')}
-                    onChange={(event) => void updateStudentField(student.id ?? 0, 'fullName', event.target.value)}
-                  />
+            {students.map((student, idx) => (
+              <tr key={student.id}>
+                <td className="grid-cell row-index">{idx + 1}</td>
+                <td className="grid-cell student-name-col">
+                  <input className="inline-grid-input" value={student.fullName} onChange={(e) => updateStudentField(student.id!, 'fullName', e.target.value)} />
                 </td>
-                <td className="grid-cell" onPointerDown={(event) => startColumnResizeFromCell(event, 'sex')}>
-                  <select className="inline-grid-input" value={student.sex ?? ''} onPaste={(event) => void handlePasteIntoCell(event, student.id ?? 0, 'sex')} onChange={(event) => void updateStudentField(student.id ?? 0, 'sex', event.target.value)}>
-                    <option value=""> </option>
-                    <option value="M">M</option>
-                    <option value="F">F</option>
-                  </select>
-                </td>
-                <td className="grid-cell" onPointerDown={(event) => startColumnResizeFromCell(event, 'age')}>
-                  <input
-                    className="inline-grid-input"
-                    type="number"
-                    min={5}
-                    max={30}
-                    value={student.age ?? ''}
-                    onPaste={(event) => void handlePasteIntoCell(event, student.id ?? 0, 'age')}
-                    onChange={(event) => void updateStudentField(student.id ?? 0, 'age', event.target.value)}
-                  />
-                </td>
-
-                {subjects.map((subject) => {
-                  const value = scores[student.id ?? -1]?.[subject.id ?? -1]
-
-                  if (subject.kind === 'dropdown') {
-                    return (
-                      <td key={`${student.id}-${subject.id}`} className="grid-cell" onPointerDown={(event) => startColumnResizeFromCell(event, `subject-${subject.id}`)}>
-                        <select
-                          className="inline-grid-input"
-                          value={value ?? ''}
-                          onPaste={(event) => void handlePasteIntoCell(event, student.id ?? 0, 'score', subject.id ?? 0)}
-                          onChange={(event) => void updateScoreValue(student.id ?? 0, subject.id ?? 0, event.target.value)}
-                        >
-                          <option value=""> </option>
-                          {(subject.options ?? []).map((option) => (
-                            <option key={`${subject.id}-${option}`} value={option}>
-                              {option}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                    )
-                  }
-
-                  if (subject.kind === 'text') {
-                    return (
-                      <td key={`${student.id}-${subject.id}`} className="grid-cell" onPointerDown={(event) => startColumnResizeFromCell(event, `subject-${subject.id}`)}>
-                        <input
-                          className="inline-grid-input"
-                          value={value ?? ''}
-                          onPaste={(event) => void handlePasteIntoCell(event, student.id ?? 0, 'score', subject.id ?? 0)}
-                          onChange={(event) => void updateScoreValue(student.id ?? 0, subject.id ?? 0, event.target.value)}
-                        />
-                      </td>
-                    )
-                  }
-
-                  return (
-                    <td key={`${student.id}-${subject.id}`} className="grid-cell" onPointerDown={(event) => startColumnResizeFromCell(event, `subject-${subject.id}`)}>
-                      <input
-                        className={`inline-grid-input ${isScoreCell(subject.id ?? 0) ? 'score-cell' : ''}`}
-                        type={subject.kind === 'number' ? 'number' : 'text'}
-                        value={value ?? ''}
-                        inputMode={subject.kind === 'number' ? 'decimal' : 'text'}
-                        onPaste={(event) => void handlePasteIntoCell(event, student.id ?? 0, 'score', subject.id ?? 0)}
-                        onChange={(event) => void updateScoreValue(student.id ?? 0, subject.id ?? 0, event.target.value)}
-                      />
-                    </td>
-                  )
-                })}
-
-                <td className="grid-cell total-cell" onPointerDown={(event) => startColumnResizeFromCell(event, 'total')}>{totalForStudent(student.id ?? 0)}</td>
-                <td className="grid-cell" onPointerDown={(event) => startColumnResizeFromCell(event, 'remark')}>
-                  <input
-                    className="inline-grid-input"
-                    value={remarks[student.id ?? -1] ?? ''}
-                    onPaste={(event) => void handlePasteIntoCell(event, student.id ?? 0, 'remark')}
-                    onChange={(event) => void updateRemarkValue(student.id ?? 0, event.target.value)}
-                  />
-                </td>
-                <td className="grid-cell row-delete-cell" onPointerDown={(event) => startColumnResizeFromCell(event, 'remark')}>
-                  <button type="button" className="utility-button danger-button" onClick={() => void archiveStudentRow(student.id ?? 0)} aria-label={`Archive ${student.fullName}`}>
-                    {getText('common.delete')}
-                  </button>
-                </td>
+                <td className="grid-cell is-sex-cell" style={{ cursor: 'pointer', textAlign: 'center' }} onClick={() => { const cur = student.sex ?? ''; updateStudentField(student.id!, 'sex', cur === '' ? 'M' : cur === 'M' ? 'F' : '') }}>{student.sex ?? '–'}</td>
+                <td className="grid-cell"><input className="inline-grid-input" type="number" value={student.age ?? ''} onChange={(e) => updateStudentField(student.id!, 'age', e.target.value === '' ? null : Number(e.target.value))} /></td>
+                <td className="grid-cell"><input className="inline-grid-input" value={remarks[student.id!] ?? ''} onChange={(e) => updateRemarkValue(student.id!, e.target.value)} /></td>
+                {subjects.map((sub) => (
+                  <td key={`${student.id}-${sub.id}`} className="grid-cell">
+                    <input className="inline-grid-input score-cell" value={scores[student.id!]?.[sub.id!] ?? ''} onChange={(e) => updateScoreValue(student.id!, sub.id!, e.target.value)} />
+                  </td>
+                ))}
+                <td className="grid-cell total-cell">{totalForStudent(student.id!)}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
-      <SheetTabs tabs={sheetTabs} onSelect={handleTabClick} onAdd={() => setDialogOpen(true)} />
-
-      {dialogOpen && (
-        <div className="class-dialog-backdrop" onClick={() => setDialogOpen(false)}>
-          <form className="class-dialog" onClick={(event) => event.stopPropagation()} onSubmit={createClass}>
-            <h3>{getText('addRecord.classDialogTitle')}</h3>
-            <label>
-              <span>{getText('addRecord.school')}</span>
-              <input value={dialogState.schoolName} onChange={(event) => setDialogState((current) => ({ ...current, schoolName: event.target.value }))} />
-            </label>
-            <div className="dialog-two-col">
-              <label>
-                <span>{getText('addRecord.grade')}</span>
-                <select value={dialogState.grade} onChange={(event) => setDialogState((current) => ({ ...current, grade: Number(event.target.value) }))}>
-                  {[...Array(12)].map((_, index) => (
-                    <option key={index + 1} value={index + 1}>{index + 1}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span>{getText('addRecord.section')}</span>
-                <input value={dialogState.section} maxLength={3} onChange={(event) => setDialogState((current) => ({ ...current, section: event.target.value.toUpperCase() }))} />
-              </label>
-            </div>
-            <div className="dialog-two-col">
-              <label>
-                <span>{getText('addRecord.semester')}</span>
-                <select value={dialogState.semester} onChange={(event) => setDialogState((current) => ({ ...current, semester: Number(event.target.value) as Semester }))}>
-                  <option value={1}>I</option>
-                  <option value={2}>II</option>
-                </select>
-              </label>
-              <label>
-                <span>{getText('addRecord.year')}</span>
-                <input value={dialogState.academicYear} onChange={(event) => setDialogState((current) => ({ ...current, academicYear: event.target.value }))} />
-              </label>
-            </div>
-            <div className="dialog-actions">
-              <button type="button" className="toolbar-button" onClick={() => setDialogOpen(false)}>
-                {getText('common.cancel')}
-              </button>
-              <button type="submit" className="toolbar-button primary-button">
-                {getText('common.save')}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {subjectDialogOpen && (
-        <div className="class-dialog-backdrop" onClick={() => setSubjectDialogOpen(false)}>
-          <form className="class-dialog" onClick={(event) => event.stopPropagation()} onSubmit={(event) => {
-            event.preventDefault()
-            void addSubject()
-          }}>
-            <h3>{getText('addRecord.addSubject')}</h3>
-            <label>
-              <span>{getText('addRecord.subjectPrompt')}</span>
-              <input
-                value={subjectDialogState.name}
-                onChange={(event) => setSubjectDialogState((current) => ({ ...current, name: event.target.value }))}
-              />
-            </label>
-            <label>
-              <span>{getText('addRecord.subjectMax')}</span>
-              <input
-                type="number"
-                min={1}
-                value={subjectDialogState.maxScore}
-                onChange={(event) => setSubjectDialogState((current) => ({ ...current, maxScore: Number(event.target.value) || 100 }))}
-              />
-            </label>
-            <div className="dialog-actions">
-              <button type="button" className="toolbar-button" onClick={() => setSubjectDialogOpen(false)}>
-                {getText('common.cancel')}
-              </button>
-              <button type="submit" className="toolbar-button primary-button">
-                {getText('common.save')}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+      <SheetTabs tabs={sheetTabs} onSelect={handleTabClick} onAdd={() => setCreateClassOpen(true)} />
 
       {columnDialogOpen && (
         <div className="class-dialog-backdrop" onClick={() => setColumnDialogOpen(false)}>
-          <form className="class-dialog" onClick={(event) => event.stopPropagation()} onSubmit={(event) => {
-            event.preventDefault()
-            void addColumn()
-          }}>
-            <h3>{getText('addRecord.addColumn')}</h3>
-            <label>
-              <span>{getText('addRecord.subjectPrompt')}</span>
-              <input
-                value={columnDialogState.name}
-                onChange={(event) => setColumnDialogState((current) => ({ ...current, name: event.target.value }))}
-              />
-            </label>
-            <label>
-              <span>Type</span>
-              <select
-                value={columnDialogState.kind}
-                onChange={(event) => setColumnDialogState((current) => ({ ...current, kind: event.target.value as 'text' | 'number' | 'dropdown' }))}
-              >
-                <option value="text">Text</option>
-                <option value="number">Number</option>
-                <option value="dropdown">Dropdown</option>
-              </select>
-            </label>
-            {columnDialogState.kind === 'dropdown' && (
-              <label>
-                <span>Options</span>
-                <input
-                  value={columnDialogState.options}
-                  onChange={(event) => setColumnDialogState((current) => ({ ...current, options: event.target.value }))}
-                />
+          <form className="class-dialog" onClick={(e) => e.stopPropagation()} onSubmit={(e) => { e.preventDefault(); void saveColumn() }}>
+            <h3>Add Subject</h3>
+            <label><span>Name</span><input value={columnForm.name} onChange={(e) => setColumnForm((c) => ({ ...c, name: e.target.value }))} autoFocus /></label>
+            <label><span>Max Score</span><input type="number" value={columnForm.maxScore} onChange={(e) => setColumnForm((c) => ({ ...c, maxScore: Number(e.target.value) }))} /></label>
+            <div className="dialog-actions"><button type="button" className="toolbar-button" onClick={() => setColumnDialogOpen(false)}>Cancel</button><button type="submit" className="toolbar-button primary-button">Save</button></div>
+          </form>
+        </div>
+      )}
+
+      {createClassOpen && (
+        <div className="class-dialog-backdrop" onClick={() => setCreateClassOpen(false)} role="presentation">
+          <form className="class-dialog" onClick={(e) => e.stopPropagation()} onSubmit={createClass}>
+            <h3>{getText('addRecord.classDialogTitle')}</h3>
+            <label><span>{getText('addRecord.school')}</span><input value={createClassForm.schoolName} onChange={(e) => setCreateClassForm((c) => ({ ...c, schoolName: e.target.value }))} /></label>
+            <div className="dialog-two-col">
+              <label><span>{getText('addRecord.grade')}</span><input value={createClassForm.grade} onChange={(e) => setCreateClassForm((c) => ({ ...c, grade: e.target.value }))} /></label>
+              <label><span>{getText('addRecord.section')}</span><input value={createClassForm.section} maxLength={3} onChange={(e) => setCreateClassForm((c) => ({ ...c, section: e.target.value.toUpperCase() }))} /></label>
+            </div>
+            <div className="dialog-two-col">
+              <label><span>{getText('addRecord.semester')}</span>
+                <div className="toggle-group">
+                  <button type="button" className={`toggle-btn ${createClassForm.semester === 1 ? 'is-active' : ''}`} onClick={() => setCreateClassForm((c) => ({ ...c, semester: 1 }))}>I</button>
+                  <button type="button" className={`toggle-btn ${createClassForm.semester === 2 ? 'is-active' : ''}`} onClick={() => setCreateClassForm((c) => ({ ...c, semester: 2 }))}>II</button>
+                </div>
               </label>
-            )}
+              <label><span>{getText('addRecord.year')}</span><input value={createClassForm.academicYear} onChange={(e) => setCreateClassForm((c) => ({ ...c, academicYear: e.target.value }))} /></label>
+            </div>
             <div className="dialog-actions">
-              <button type="button" className="toolbar-button" onClick={() => setColumnDialogOpen(false)}>
-                {getText('common.cancel')}
-              </button>
-              <button type="submit" className="toolbar-button primary-button">
-                {getText('common.save')}
-              </button>
+              <button type="button" className="toolbar-button" onClick={() => setCreateClassOpen(false)}>{getText('common.cancel')}</button>
+              <button type="submit" className="toolbar-button primary-button">{getText('common.save')}</button>
             </div>
           </form>
         </div>
       )}
 
-      {subjectEditorOpen && (
-        <div className="class-dialog-backdrop" onClick={() => setSubjectEditorOpen(false)}>
-          <form className="class-dialog" onClick={(event) => event.stopPropagation()} onSubmit={saveSubjectEditor}>
-            <h3>Edit subject</h3>
-            <label>
-              <span>{getText('addRecord.subjectPrompt')}</span>
-              <input
-                value={subjectEditorState.name}
-                onChange={(event) => setSubjectEditorState((current) => ({ ...current, name: event.target.value }))}
-              />
-            </label>
-            <label>
-              <span>{getText('addRecord.subjectMax')}</span>
-              <input
-                type="number"
-                min={1}
-                value={subjectEditorState.maxScore}
-                onChange={(event) => setSubjectEditorState((current) => ({ ...current, maxScore: Number(event.target.value) || 100 }))}
-              />
-            </label>
-            <div className="dialog-actions">
-              <button type="button" className="toolbar-button" onClick={() => setSubjectEditorOpen(false)}>
-                {getText('common.cancel')}
-              </button>
-              <button type="submit" className="toolbar-button primary-button">
-                {getText('common.save')}
-              </button>
-            </div>
-          </form>
-        </div>
+      {rosterDialogOpen && (
+        <RosterSetupDialog
+          sheetOptions={classes.flatMap(c => c.openSemesters.map(s => ({ id: c.id!, name: c.name, semester: s as Semester })))}
+          t={getText}
+          onExport={executeRosterExport}
+          onCancel={() => setRosterDialogOpen(false)}
+        />
       )}
     </section>
   )

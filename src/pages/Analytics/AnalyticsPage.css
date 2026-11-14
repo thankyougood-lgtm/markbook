@@ -1,0 +1,156 @@
+.analytics-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  padding: 16px 16px calc(var(--bottom-nav-height) + var(--safe-area-bottom) + 16px);
+  gap: 12px;
+}
+
+.analytics-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  color: var(--muted);
+  text-align: center;
+  font-size: 0.95rem;
+}
+
+.analytics-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Overview strip */
+.analytics-overview {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+@media (min-width: 640px) {
+  .analytics-overview { grid-template-columns: repeat(4, 1fr); }
+}
+.overview-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 12px;
+  text-align: center;
+}
+.overview-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: var(--primary);
+  line-height: 1.1;
+}
+.overview-label {
+  margin-top: 4px;
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Charts grid */
+.analytics-charts-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+@media (min-width: 720px) {
+  .analytics-charts-grid { grid-template-columns: repeat(2, 1fr); }
+}
+.chart-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 12px 8px;
+  min-height: 260px;
+  display: flex;
+  flex-direction: column;
+}
+.chart-card h3 {
+  margin: 0 0 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--navy);
+}
+.chart-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 0.82rem;
+  text-align: center;
+  padding: 24px 8px;
+}
+
+/* Student summary table */
+.analytics-table-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 12px;
+}
+.analytics-table-card h3 {
+  margin: 0 0 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--navy);
+}
+.analytics-table-scroll {
+  overflow: auto;
+  max-height: 420px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.analytics-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+.analytics-table th {
+  position: sticky;
+  top: 0;
+  background: var(--surface-alt);
+  color: var(--navy);
+  font-weight: 600;
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  user-select: none;
+}
+.analytics-table th.is-sorted {
+  color: var(--primary);
+}
+.analytics-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+.analytics-table tr:last-child td {
+  border-bottom: none;
+}
+.analytics-table-name {
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Recharts text contrast in dark mode */
+html.theme-dark .recharts-text {
+  fill: var(--text);
+}
+html.theme-dark .recharts-cartesian-axis-line,
+html.theme-dark .recharts-cartesian-grid line {
+  stroke: var(--border);
+}

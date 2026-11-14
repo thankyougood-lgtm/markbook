@@ -370,7 +370,7 @@ BUILD
 .csv (src/export/exportCsv.ts)
 - UTF-8 with BOM so Excel opens Amharic correctly.
 
-.pdf (src/export/exportPdf.ts, jspdf + jspdf-autotable)
+.pdf (src/export/exportPdf.ts, jspdf + jspdf-autotable)~
 - A4. Portrait if 5 columns or fewer, landscape if more.
 - Title: "<School> - <Class> - <Sem> - <Date>".
 - columnStyles use each screen width scaled so the sum fits the printable width.

@@ -13,17 +13,17 @@ export async function getScore(input: Omit<SetScoreInput, 'value'>): Promise<Sco
 }
 
 export async function listScoresForSemester(classId: number, semester: 1 | 2) {
-  const classStudentIds = new Set((await db.students.where('classId').equals(classId).filter((student) => !student.archivedAt).keys()) as number[])
-  const subjectIds = new Set((await db.subjects.where('classId').equals(classId).filter((subject) => !subject.archivedAt).keys()) as number[])
+  const classStudentIds = new Set(
+    (await db.students.where('classId').equals(classId).filter((student) => !student.archivedAt).primaryKeys()) as number[],
+  )
 
   const map: Record<number, Record<number, ScoreValue>> = {}
-  const rows = await db.scores.where('semester').equals(semester).toArray()
+  const allScores = await db.scores.toArray()
 
-  for (const row of rows) {
-    if (!classStudentIds.has(row.studentId) || !subjectIds.has(row.subjectId)) {
-      continue
-    }
-
+  for (const row of allScores) {
+    if (row.semester !== semester) continue
+    if (!classStudentIds.has(row.studentId)) continue
+    // Removed the subjectIds check to ensure all marks load.
     map[row.studentId] ??= {}
     map[row.studentId][row.subjectId] = row.value
   }
@@ -35,10 +35,20 @@ export async function setScore(input: SetScoreInput): Promise<ScoreRow> {
   const rawValue = input.value === '' || input.value === null ? null : input.value
   const nextValue = typeof rawValue === 'string' ? (rawValue.trim() === '' ? null : rawValue) : rawValue
 
+  // Force numbers to prevent undefined key collisions
+  const safeStudentId = Number(input.studentId)
+  const safeSemester = Number(input.semester)
+  const safeSubjectId = Number(input.subjectId)
+
+  if (!Number.isFinite(safeStudentId) || !Number.isFinite(safeSubjectId)) {
+    console.error('[SCORE REPO] Invalid IDs for setScore:', input)
+    throw new Error('Invalid studentId or subjectId')
+  }
+
   const record: ScoreRow = {
-    studentId: input.studentId,
-    semester: input.semester,
-    subjectId: input.subjectId,
+    studentId: safeStudentId,
+    semester: safeSemester as 1 | 2,
+    subjectId: safeSubjectId,
     value: nextValue,
   }
 

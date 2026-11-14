@@ -1,13 +1,18 @@
-import { useEffect, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react'
 import en from './i18n/en.json'
 import am from './i18n/am.json'
 import om from './i18n/om.json'
 import { db } from './db/db'
-import * as classRepo from './db/repositories/classRepo'
 import * as settingsRepo from './db/repositories/settingsRepo'
 import { createSampleData } from './db/sampleData'
 import { AddRecordPage } from './pages/AddRecord/AddRecordPage'
+import { AttendancePage } from './pages/Attendance/AttendancePage'
+import { HomePage } from './pages/Home/HomePage'
 import './theme.css'
+
+const AnalyticsPage = lazy(() =>
+  import('./pages/Analytics/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage })),
+)
 
 type Language = 'en' | 'am' | 'om'
 type ThemeMode = 'light' | 'dark'
@@ -47,20 +52,11 @@ function App() {
     const saved = localStorage.getItem('markbook-theme')
     return saved === 'dark' ? 'dark' : 'light'
   })
-  const [classes, setClasses] = useState<Array<{ id?: number; name: string; openSemesters: number[] }>>([])
-  const [homeClassId, setHomeClassId] = useState<number | null>(null)
-  const [homeSemester, setHomeSemester] = useState<number>(1)
-  const [classesReady, setClassesReady] = useState(false)
   const [storageStatus, setStorageStatus] = useState({ supported: false, persisted: false })
 
   useEffect(() => {
     void db.open()
     void (async () => {
-      const records = await classRepo.listClasses()
-
-      setClasses(records.map((record) => ({ id: record.id, name: record.name, openSemesters: record.openSemesters ?? [1] })))
-      setClassesReady(true)
-
       const status = await settingsRepo.storageStatus()
       setStorageStatus(status)
       if (status.supported && !status.persisted) {
@@ -81,20 +77,6 @@ function App() {
     document.documentElement.lang = targetLang
     localStorage.setItem('markbook-language', language)
   }, [language])
-
-  useEffect(() => {
-    if (classes.length === 0) {
-      setHomeClassId(null)
-      setHomeSemester(1)
-      return
-    }
-
-    const nextClassId = homeClassId && classes.some((item) => item.id === homeClassId) ? homeClassId : classes[0]?.id ?? null
-    setHomeClassId(nextClassId)
-
-    const currentClass = classes.find((item) => item.id === nextClassId) ?? classes[0]
-    setHomeSemester(currentClass?.openSemesters?.[0] ?? 1)
-  }, [classes, homeClassId])
 
   useEffect(() => {
     const handleExportStatus = (event: Event) => {
@@ -184,20 +166,16 @@ function App() {
     window.dispatchEvent(new CustomEvent('markbook:export', { detail: { format } }))
   }
 
+  const handleRosterExportRequest = (format: 'csv' | 'xlsx' | 'pdf') => {
+    setExportMenuOpen(false)
+    window.dispatchEvent(new CustomEvent('markbook:roster-export', { detail: { format } }))
+  }
+
   const handleMenuSelect = (target: PageKey) => {
     setPage(target)
     closeMenu()
     setExportMenuOpen(false)
   }
-
-  const renderPlaceholderPage = (key: Exclude<PageKey, 'home' | 'settings'>) => (
-    <section className="page-panel">
-      <div className="placeholder-card">
-        <h2>{t(`page.${key}`)}</h2>
-        <p>{t('page.comingSoon')}</p>
-      </div>
-    </section>
-  )
 
   return (
     <div className="app-shell min-h-screen bg-[var(--bg-page)] text-[var(--text)]">
@@ -207,13 +185,24 @@ function App() {
             <div className="export-menu-wrap">
               <button
                 type="button"
-                className="export-button"
+                className="export-button icon-button"
                 aria-label={t('menu.export')}
                 aria-expanded={exportMenuOpen}
                 disabled={isExporting}
                 onClick={() => setExportMenuOpen((current) => !current)}
               >
-                {isExporting ? t('export.loading') : t('menu.export')}
+                {isExporting ? (
+                  <span>{t('export.loading')}</span>
+                ) : (
+                  <>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="7 10 12 15 17 10" />
+                      <line x1="12" y1="15" x2="12" y2="3" />
+                    </svg>
+                    <span>{t('menu.export')}</span>
+                  </>
+                )}
               </button>
               <div className={`export-menu ${exportMenuOpen ? 'is-open' : ''}`} role="menu" aria-label={t('menu.export')}>
                 <button type="button" className="menu-link" onClick={() => handleExportRequest('xlsx')}>
@@ -222,9 +211,20 @@ function App() {
                 <button type="button" className="menu-link" onClick={() => handleExportRequest('csv')}>
                   {t('export.csv')}
                 </button>
-                <button type="button" className="menu-link" onClick={() => handleExportRequest('pdf')}>
-                  {t('export.pdf')}
-                </button>
+                {page === 'addRecord' && (
+                  <>
+                    <div className="menu-divider" />
+                    <button type="button" className="menu-link" onClick={() => handleRosterExportRequest('xlsx')}>
+                      {t('export.rosterXlsx')}
+                    </button>
+                    <button type="button" className="menu-link" onClick={() => handleRosterExportRequest('csv')}>
+                      {t('export.rosterCsv')}
+                    </button>
+                    <button type="button" className="menu-link" onClick={() => handleRosterExportRequest('pdf')}>
+                      {t('export.rosterPdf')}
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           )}
@@ -277,66 +277,15 @@ function App() {
       </aside>
 
       <main className="content-area">
-        {page === 'home' && (
-          <section className="page-panel">
-            <div className="page-card home-card">
-              {!classesReady ? (
-                <div className="home-selector-row" aria-live="polite">
-                  <div className="select-wrap">
-                    <select id="home-class-select" value="" disabled aria-label={t('home.classLabel')}>
-                      <option value="">{t('home.classLabel')}</option>
-                    </select>
-                  </div>
-
-                  <div className="select-wrap">
-                    <select id="home-semester-select" value={1} disabled aria-label={t('home.semesterLabel')}>
-                      <option value={1}>{t('home.semesterLabel')}</option>
-                    </select>
-                  </div>
-                </div>
-              ) : classes.length > 0 ? (
-                <div className="home-selector-row">
-                  <div className="select-wrap">
-                    <select
-                      id="home-class-select"
-                      value={homeClassId ?? ''}
-                      onChange={(event) => setHomeClassId(Number(event.target.value) || null)}
-                      aria-label={t('home.classLabel')}
-                    >
-                      {classes.map((item) => (
-                        <option key={item.id} value={item.id ?? ''}>
-                          {item.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="select-wrap">
-                    <select
-                      id="home-semester-select"
-                      value={homeSemester}
-                      onChange={(event) => setHomeSemester(Number(event.target.value))}
-                      aria-label={t('home.semesterLabel')}
-                    >
-                      <option value={1}>{t('semester.i')}</option>
-                      <option value={2}>{t('semester.ii')}</option>
-                    </select>
-                  </div>
-                </div>
-              ) : (
-                <p className="home-empty">
-                  <button type="button" className="home-empty-link" onClick={() => setPage('addRecord')}>
-                    {t('home.empty')}
-                  </button>
-                </p>
-              )}
-            </div>
-          </section>
-        )}
+        {page === 'home' && <HomePage onOpenAddRecord={() => setPage('addRecord')} t={t} />}
 
         {page === 'addRecord' && <AddRecordPage />}
-        {page === 'attendance' && renderPlaceholderPage('attendance')}
-        {page === 'analytics' && renderPlaceholderPage('analytics')}
+        {page === 'attendance' && <AttendancePage />}
+        {page === 'analytics' && (
+          <Suspense fallback={<div className="page-panel"><div className="placeholder-card"><p>{t('analytics.loading')}</p></div></div>}>
+            <AnalyticsPage />
+          </Suspense>
+        )}
 
         {page === 'settings' && (
           <section className="page-panel">
@@ -369,7 +318,13 @@ function App() {
 
               <div className="setting-row stacked">
                 <label>Storage</label>
-                <span className="setting-status">{storageStatus.supported ? (storageStatus.persisted ? 'Persisted' : 'Not persisted') : 'Unsupported'}</span>
+                <span className="setting-status">
+                  {storageStatus.supported
+                    ? storageStatus.persisted
+                      ? 'Persisted'
+                      : 'Not persisted'
+                    : 'Unsupported'}
+                </span>
               </div>
 
               {import.meta.env.DEV && (
@@ -378,8 +333,6 @@ function App() {
                   className="sample-button"
                   onClick={async () => {
                     await createSampleData()
-                    const records = await classRepo.listClasses()
-                    setClasses(records.map((record) => ({ id: record.id, name: record.name, openSemesters: record.openSemesters ?? [1] })))
                   }}
                 >
                   Create sample data
@@ -424,7 +377,7 @@ function App() {
           >
             <h3 id="about-dialog-title">{t('about.title')}</h3>
             <p className="text-sm font-semibold text-[var(--navy)]">
-              {t('about.version')}: v0.3b
+              {t('about.version')}: v0.6
             </p>
             <p className="text-sm text-[var(--muted)] leading-relaxed">
               {t('about.description')}

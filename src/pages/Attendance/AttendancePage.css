@@ -1,0 +1,341 @@
+/* ── Page shell ────────────────────────────────────────────────────── */
+.attendance-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  padding: 16px 16px calc(var(--bottom-nav-height) + var(--safe-area-bottom) + 16px);
+  gap: 12px;
+}
+
+.attendance-page .grid-empty-state {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  color: var(--muted);
+  text-align: center;
+  font-size: 0.95rem;
+}
+
+.session-count-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+/* ── Grid wrapper (own scroll container) ───────────────────────────── */
+.attendance-grid-wrapper {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  position: relative;
+  -webkit-overflow-scrolling: touch;
+}
+
+.empty-sessions-banner {
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 10px 14px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: 0.85rem;
+  text-align: center;
+  z-index: 6;
+}
+
+/* ── Grid table ────────────────────────────────────────────────────── */
+.attendance-grid-table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: max-content;
+  min-width: 100%;
+  font-size: 0.85rem;
+}
+
+.attendance-grid-table th,
+.attendance-grid-table td {
+  height: 40px;
+  padding: 0 8px;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  text-align: center;
+  vertical-align: middle;
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* Last column / row — drop trailing border */
+.attendance-grid-table tr > *:last-child {
+  border-right: none;
+}
+.attendance-grid-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Column widths */
+.att-col-no { width: 48px; }
+.att-col-name { width: 150px; }
+.att-col-session { width: 56px; }
+.att-col-ellipsis { width: 36px; }
+.att-col-sum { width: 44px; }
+
+/* ── Sticky header row ─────────────────────────────────────────────── */
+.attendance-grid-table thead th.att-header {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  background: var(--surface-alt);
+  color: var(--navy);
+  font-weight: 600;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ── Sticky NO column (left) ───────────────────────────────────────── */
+.attendance-grid-table th.att-no,
+.attendance-grid-table td.att-no {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  background: var(--surface-alt);
+  color: var(--navy);
+  font-weight: 600;
+  width: 48px;
+  min-width: 48px;
+}
+.attendance-grid-table thead th.att-no {
+  z-index: 5;
+}
+
+/* ── Sticky Name column ────────────────────────────────────────────── */
+.attendance-grid-table th.att-name,
+.attendance-grid-table td.att-name {
+  position: sticky;
+  left: 48px;
+  z-index: 3;
+  background: var(--surface);
+  text-align: left;
+  width: 150px;
+  min-width: 150px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.attendance-grid-table thead th.att-name {
+  z-index: 5;
+  background: var(--surface-alt);
+  color: var(--navy);
+}
+
+/* ── Session cells ─────────────────────────────────────────────────── */
+.att-session.att-header {
+  cursor: pointer;
+  user-select: none;
+  padding: 4px 6px;
+}
+.att-session.att-header:hover {
+  background: var(--primary-soft);
+}
+
+.att-session-date {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--navy);
+  white-space: nowrap;
+}
+.att-session-detail {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.att-session-cell {
+  width: 56px;
+  min-width: 56px;
+  cursor: pointer;
+  user-select: none;
+  font-weight: 600;
+  font-size: 0.9rem;
+  transition: background-color 80ms ease;
+}
+.att-session-cell.status-none {
+  color: var(--muted);
+  font-weight: 400;
+}
+.att-session-cell.status-P {
+  color: var(--primary);
+  background: var(--primary-soft);
+}
+.att-session-cell.status-A {
+  color: var(--danger);
+}
+.att-session-cell.status-L {
+  color: var(--navy);
+}
+.att-session-cell.status-E {
+  color: var(--muted);
+}
+.att-session-cell:active {
+  background: var(--primary-soft);
+}
+
+/* ── Summary cells (P / A / L / E — sticky right) ───────────────────── */
+.attendance-grid-table th.att-summary,
+.attendance-grid-table td.att-summary {
+  position: sticky;
+  z-index: 3;
+  width: 44px;
+  min-width: 44px;
+  font-weight: 600;
+  background: var(--surface-alt);
+  color: var(--navy);
+}
+.attendance-grid-table thead th.att-summary {
+  z-index: 5;
+}
+
+.attendance-grid-table th.att-p,
+.attendance-grid-table td.att-p { right: 132px; }
+.attendance-grid-table th.att-a,
+.attendance-grid-table td.att-a { right: 88px; }
+.attendance-grid-table th.att-l,
+.attendance-grid-table td.att-l { right: 44px; }
+.attendance-grid-table th.att-e,
+.attendance-grid-table td.att-e { right: 0; }
+
+/* Ellipsis cell for >60 sessions */
+.att-ellipsis {
+  color: var(--muted);
+  font-weight: 600;
+  width: 36px;
+  min-width: 36px;
+}
+
+/* ── SessionDialog ─────────────────────────────────────────────────── */
+.session-dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 31, 92, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 16px;
+}
+
+.session-dialog {
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 16px;
+  padding: 24px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.session-dialog h3 {
+  margin: 0 0 4px;
+  color: var(--navy);
+  font-size: 1.05rem;
+}
+
+.session-dialog label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.session-dialog input,
+.session-dialog select {
+  height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.92rem;
+}
+
+.session-dialog input:focus,
+.session-dialog select:focus {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+.session-confirm-delete {
+  padding: 12px;
+  background: var(--primary-soft);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.session-confirm-delete p {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--text);
+}
+
+.ghost-danger {
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid var(--danger);
+}
+
+@media (max-width: 479px) {
+  .session-dialog-backdrop {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .session-dialog {
+    max-width: none;
+    border-radius: 16px 16px 0 0;
+    padding-bottom: calc(24px + var(--safe-area-bottom));
+  }
+}
+
+/* ── Keyboard navigation: active cell + active column ────────────── */
+.attendance-grid-wrapper:focus {
+  outline: none;
+}
+.attendance-grid-wrapper:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.attendance-grid-table td.att-session-cell.is-active-col {
+  background: rgba(47, 91, 224, 0.08);
+}
+html.theme-dark .attendance-grid-table td.att-session-cell.is-active-col {
+  background: rgba(91, 135, 255, 0.12);
+}
+/* status-P cells keep their primary-soft background even when column is active */
+.attendance-grid-table td.att-session-cell.status-P.is-active-col {
+  background: var(--primary-soft);
+}
+.attendance-grid-table th.att-session.att-header.is-active-col {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+.attendance-grid-table td.att-session-cell.is-active-cell {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+  position: relative;
+  z-index: 2;
+}
