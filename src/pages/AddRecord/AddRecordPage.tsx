@@ -291,7 +291,7 @@ export function AddRecordPage() {
         name, grade: numericGrade || 0, section, academicYear: year,
         schoolName: createClassForm.schoolName.trim(),
         semester: createClassForm.semester,
-        allowDuplicate: true,
+        allowDuplicate: false,
       })
       await classRepo.openSheet(created.id!, createClassForm.semester)
       setClasses((cur) => [...cur, created])
@@ -388,58 +388,46 @@ export function AddRecordPage() {
   }
 
   // ── Roster Export ────────────────────────────────────────────────
-  const executeRosterExport = async (format: 'xlsx' | 'csv', sem1ClassId: number | null, sem2ClassId: number | null) => {
+  const executeRosterExport = async (format: 'xlsx' | 'csv', sem1Id: number | null, sem2Id: number | null) => {
     if (!activeClass?.id) return
     setRosterDialogOpen(false)
     window.dispatchEvent(new CustomEvent('markbook:export-status', { detail: { exporting: true } }))
     
     try {
-      // 1. Load students from BOTH classes and merge by name
-      const sem1Students = sem1ClassId ? await studentRepo.listStudents(sem1ClassId) : []
-      const sem2Students = sem2ClassId ? await studentRepo.listStudents(sem2ClassId) : []
+      // 1. Load students from BOTH classes (in case they are split) and merge by name
+      const sem1Students = sem1Id !== null ? await studentRepo.listStudents(activeClass.id) : []
+      const sem2Students = sem2Id !== null ? await studentRepo.listStudents(activeClass.id) : []
       
-      const toSex = (v: unknown): 'F' | 'M' | null => (v === 'F' || v === 'M' ? v : null)
-      const studentMap = new Map<string, { id: number; fullName: string; sex: 'F' | 'M' | null; age: number | null }>()
-      
-      // Add Sem 1 students
+      const studentMap = new Map<string, { id: number; fullName: string; sex: 'M' | 'F' | null; age: number | null }>()
       for (const s of sem1Students) {
-        if (!s.id) continue
-        studentMap.set(s.fullName.trim(), { id: s.id, fullName: s.fullName, sex: toSex(s.sex), age: s.age ?? null })
+        if (s.id) studentMap.set(s.fullName.trim(), { id: s.id, fullName: s.fullName, sex: (s.sex as 'M' | 'F' | null) ?? null, age: s.age ?? null })
       }
-      // Add Sem 2 students (if not already there)
       for (const s of sem2Students) {
-        if (!s.id) continue
-        const name = s.fullName.trim()
-        if (!studentMap.has(name)) {
-          studentMap.set(name, { id: s.id, fullName: s.fullName, sex: toSex(s.sex), age: s.age ?? null })
+        if (s.id && !studentMap.has(s.fullName.trim())) {
+          studentMap.set(s.fullName.trim(), { id: s.id, fullName: s.fullName, sex: (s.sex as 'M' | 'F' | null) ?? null, age: s.age ?? null })
         }
       }
-      
       const mergedStudents = Array.from(studentMap.values())
 
-      // 2. Load subjects for BOTH classes (they are usually the same)
-      const sem1Subjects = sem1ClassId ? await subjectRepo.listSubjects(sem1ClassId) : []
-      const sem2Subjects = sem2ClassId ? await subjectRepo.listSubjects(sem2ClassId) : []
+      // 2. Load subjects for BOTH
+      const sem1Subjects = sem1Id !== null ? await subjectRepo.listSubjects(activeClass.id) : []
+      const sem2Subjects = sem2Id !== null ? await subjectRepo.listSubjects(activeClass.id) : []
 
-      // 3. Load marks for BOTH semesters from their respective classes
-      const sem1MarksRaw = sem1ClassId ? await scoreRepo.listScoresForSemester(sem1ClassId, 1) : {}
-      const sem2MarksRaw = sem2ClassId ? await scoreRepo.listScoresForSemester(sem2ClassId, 2) : {}
+      // 3. Load marks for BOTH semesters
+      const sem1MarksRaw = sem1Id !== null ? await scoreRepo.listScoresForSemester(activeClass.id, 1) : {}
+      const sem2MarksRaw = sem2Id !== null ? await scoreRepo.listScoresForSemester(activeClass.id, 2) : {}
 
-      // 4. Map marks to the merged students by matching names
+      // 4. Map marks to the merged students by name
       const nameToMasterId = new Map<string, number>()
       for (const s of mergedStudents) nameToMasterId.set(s.fullName.trim(), s.id)
 
-      const flattenMarks = (
-        map: Record<number, Record<number, CellValue>>,
-        semesterStudents: typeof sem1Students
-      ): any[] => {
+      const flattenMarks = (map: Record<number, Record<number, CellValue>>, semesterStudents: typeof sem1Students): any[] => {
         const out: any[] = []
         for (const studentId in map) {
           const student = semesterStudents.find(s => s.id === Number(studentId))
           if (!student) continue
           const masterId = nameToMasterId.get(student.fullName.trim())
           if (!masterId) continue
-
           for (const subId in map[studentId]) {
             out.push({ studentId: masterId, subjectId: Number(subId), value: map[studentId][subId] as number | null })
           }
@@ -449,7 +437,6 @@ export function AddRecordPage() {
 
       const flat1 = flattenMarks(sem1MarksRaw, sem1Students)
       const flat2 = flattenMarks(sem2MarksRaw, sem2Students)
-      
       const rosterSubjects = autoMapSubjects(sem1Subjects, sem2Subjects, flat1, flat2)
 
       // 5. Load attendance and remarks
@@ -459,7 +446,6 @@ export function AddRecordPage() {
       for (const rec of allRecords) {
         if (rec.status === 'A') absentsMap[rec.studentId] = (absentsMap[rec.studentId] || 0) + 1
       }
-      
       const remarks1 = await studentSemesterRepo.listRemarksForSemester(activeClass.id, 1)
       const remarks2 = await studentSemesterRepo.listRemarksForSemester(activeClass.id, 2)
       const combinedRemarks: Record<number, string> = {}
@@ -479,31 +465,16 @@ export function AddRecordPage() {
         remarks: combinedRemarks,
       })
 
-      // 7. Fix grade extraction for the title
-      let displayGrade = activeClass.grade
-      if (!displayGrade) {
-        const match = activeClass.name.match(/grade\s*(\d+)/i)
-        if (match) displayGrade = Number(match[1])
-      }
-      let displaySection = activeClass.section
-      if (!displaySection) {
-        const match = activeClass.name.match(/\s([A-Z])$/i)
-        if (match) displaySection = match[1]
-      }
-
-      // 7.5 Run Safety Audit
+      // 6.5 Safety Audit
       const issues = auditRoster(model)
-      const errors = issues.filter(i => i.severity === 'error')
-      if (errors.length > 0) {
-        const msg = 'The roster did not pass the data check. Details:\n\n' + errors.map(e => e.message).join('\n')
-        console.error('[ROSTER AUDIT] Errors:', errors)
-        if (!window.confirm(msg + '\n\nDownload anyway?')) {
+      if (issues.filter(i => i.severity === 'error').length > 0) {
+        if (!window.confirm('Data check failed. Download anyway?')) {
           window.dispatchEvent(new CustomEvent('markbook:export-status', { detail: { exporting: false } }))
           return
         }
       }
 
-      // 8. Generate the file
+      // 7. Generate the file
       const dateStr = new Date().toISOString().split('T')[0]
       const cleanClassName = activeClass.name.replace(/[^a-z0-9]/gi, '')
       const filename = `${cleanClassName}_Roster_${dateStr}.${format}`
@@ -513,8 +484,8 @@ export function AddRecordPage() {
           model, 
           schoolName: activeClass.schoolName ?? '',
           className: activeClass.name,
-          grade: displayGrade,
-          section: displaySection,
+          grade: activeClass.grade || 0,
+          section: activeClass.section || 'A',
           academicYear: formatAcademicYear(activeClass.academicYear),
         })
         const blob = new Blob([buffer.buffer as ArrayBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })

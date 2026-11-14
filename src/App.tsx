@@ -211,9 +211,6 @@ function App() {
                 <button type="button" className="menu-link" onClick={() => handleExportRequest('csv')}>
                   {t('export.csv')}
                 </button>
-                <button type="button" className="menu-link" onClick={() => handleExportRequest('pdf')}>
-                  {t('export.pdf')}
-                </button>
                 {page === 'addRecord' && (
                   <>
                     <div className="menu-divider" />

@@ -19,8 +19,8 @@ export function RosterSetupDialog({ sheetOptions, t, onExport, onCancel }: Roste
   const sem2Options = sheetOptions.filter(o => o.semester === 2)
 
   // Auto-select the first available sheet for both semesters
-  const [sem1SheetId, setSem1SheetId] = useState<number | null>(sem1Options[0]?.id ?? null)
-  const [sem2SheetId, setSem2SheetId] = useState<number | null>(sem2Options[0]?.id ?? null)
+  const [sem1SheetId, setSem1SheetId] = useState<number | null>(1)
+  const [sem2SheetId, setSem2SheetId] = useState<number | null>(sem2Options.length > 0 ? 2 : null)
 
   return (
     <div className="class-dialog-backdrop" onClick={onCancel} role="presentation">

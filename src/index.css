@@ -1762,3 +1762,62 @@ select {
   background: var(--surface-alt);
   z-index: 3;
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   Fix Attendance Page Mobile Layout
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* 1. Push the content down so it doesn't hide under the fixed top bar */
+.attendance-page {
+  padding-top: 60px !important; /* Adds space for the Export button */
+}
+
+/* 2. Make sure the grid is scrollable and cells are big enough to tap */
+.attendance-grid-wrapper {
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.attendance-grid-table td.att-session-cell {
+  min-width: 48px;
+  min-height: 44px;
+  font-size: 1rem;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 100ms ease;
+}
+
+/* Add a slight flash when a user taps the cell */
+.attendance-grid-table td.att-session-cell:active {
+  background-color: var(--primary-soft);
+}
+
+/* Make sure the headers (dates) don't overlap the summary columns */
+.attendance-grid-table th.att-session.att-header {
+  min-width: 48px;
+  background-color: var(--surface-alt);
+  border-bottom: 2px solid var(--border);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Fix mobile Attendance table so P/A/L/E don't cover the sessions
+   ═══════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* Unstick the P/A/L/E columns on phones so they scroll with the table */
+  .attendance-grid-table th.att-summary,
+  .attendance-grid-table td.att-summary {
+    position: static !important;
+  }
+  
+  /* Ensure the table can scroll horizontally smoothly */
+  .attendance-grid-wrapper {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Make the session columns a bit wider for easier tapping */
+  .attendance-grid-table .att-col-session {
+    width: 60px !important;
+    min-width: 60px !important;
+  }
+}

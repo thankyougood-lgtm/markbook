@@ -15,6 +15,9 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import { SheetTabs } from '../../components/Sheets/SheetTabs'
+import { computeLetterGrade } from '../../lib/grades'
+import { exportData } from '../../export'
+import type { ExportColumn, ExportPayload, ExportStudentRow } from '../../export/types'
 import type {
   AttendanceRecordRow,
   AttendanceSessionRow,
@@ -223,6 +226,56 @@ export function AnalyticsPage() {
     setSelectedClassId(nextClassId)
     setSemester(nextSem)
   }
+
+  useEffect(() => {
+    const handleExport = async (e: Event) => {
+      const ce = e as CustomEvent<{ format?: 'csv' | 'xlsx' }>
+      if (!ce.detail?.format || !activeClass) return
+      
+      window.dispatchEvent(new CustomEvent('markbook:export-status', { detail: { exporting: true } }))
+      try {
+        const columns: ExportColumn[] = [
+          { id: 'no', label: 'NO', widthPx: 48, kind: 'no' },
+          { id: 'name', label: 'Student Name', widthPx: 180, kind: 'name' },
+          { id: 'avg', label: 'Average %', widthPx: 80, kind: 'score' },
+          { id: 'att', label: 'Attendance %', widthPx: 80, kind: 'score' },
+          { id: 'grade', label: 'Grade', widthPx: 60, kind: 'extra' },
+        ]
+
+        const rows: ExportStudentRow[] = summaries.map((s, idx) => {
+          const letter = computeLetterGrade(s.average)
+          return {
+            studentId: s.studentId,
+            serialNo: idx + 1,
+            name: s.name,
+            sex: '', age: '',
+            scores: {
+              avg: s.average ?? '',
+              att: s.attendancePct ?? '',
+              grade: letter ?? ''
+            },
+            total: null, remark: ''
+          }
+        })
+
+        const payload: ExportPayload = {
+          schoolName: activeClass.schoolName,
+          className: activeClass.name + ' - Analytics',
+          semester: semester === 2 ? 2 : 1,
+          academicYear: activeClass.academicYear,
+          columns, rows
+        }
+
+        await exportData(ce.detail.format, payload)
+      } catch (err) {
+        console.error('Analytics export failed', err)
+      } finally {
+        window.dispatchEvent(new CustomEvent('markbook:export-status', { detail: { exporting: false } }))
+      }
+    }
+    window.addEventListener('markbook:export', handleExport)
+    return () => window.removeEventListener('markbook:export', handleExport)
+  }, [activeClass, summaries, semester])
 
   if (!activeClass) {
     return (
